@@ -72,7 +72,18 @@ body {
     transform: none;
 }
 
-#lobbyTitle, #waitingTitle {
+.menu-button.secondary {
+    background: #fff;
+    color: #222;
+    border: 2px solid #222;
+}
+
+.menu-button.secondary:hover {
+    background: #222;
+    color: #fff;
+}
+
+#lobbyTitle, #waitingTitle, #settingsTitle {
     font-size: 28px;
     font-weight: 700;
     color: #222;
@@ -135,10 +146,67 @@ body {
     color: #fff;
 }
 
+/* Settings */
+.settings-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 300px;
+    padding: 15px 20px;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    margin: 10px 0;
+}
+
+.settings-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #222;
+}
+
+.settings-description {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.toggle {
+    width: 50px;
+    height: 28px;
+    background: #ccc;
+    border-radius: 14px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.toggle.active {
+    background: #4CAF50;
+}
+
+.toggle::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle.active::after {
+    left: 24px;
+}
+
 #gameContainer {
     display: none;
     flex-direction: column;
     align-items: center;
+    position: relative;
 }
 
 #score { 
@@ -155,9 +223,99 @@ body {
     margin-bottom: 8px;
 }
 
+.game-wrapper {
+    display: flex;
+    gap: 15px;
+}
+
 canvas { 
     border: 2px solid #222;
     cursor: crosshair;
+}
+
+/* Chat */
+#chatPanel {
+    width: 200px;
+    height: 450px;
+    background: #fff;
+    border: 2px solid #222;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chatHeader {
+    background: #222;
+    color: #fff;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+#chatMessages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-message {
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    word-wrap: break-word;
+}
+
+.chat-message.you {
+    background: #e3f2fd;
+    align-self: flex-end;
+    max-width: 85%;
+}
+
+.chat-message.opponent {
+    background: #ffebee;
+    align-self: flex-start;
+    max-width: 85%;
+}
+
+.chat-message.system {
+    background: #f5f5f5;
+    align-self: center;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+}
+
+#chatInputWrapper {
+    display: flex;
+    border-top: 2px solid #222;
+}
+
+#chatInput {
+    flex: 1;
+    border: none;
+    padding: 10px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 12px;
+    outline: none;
+}
+
+#chatSend {
+    background: #222;
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-family: 'Courier Prime', monospace;
+    font-weight: 700;
+}
+
+#chatSend:hover {
+    background: #444;
 }
 
 #info { 
@@ -180,12 +338,26 @@ canvas {
     80%, 100% { content: '...'; }
 }
 
-.error-text {
-    color: #cc3333;
+.error-text { color: #cc3333; }
+.success-text { color: #33aa33; }
+
+.mode-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 10px;
 }
 
-.success-text {
-    color: #33aa33;
+.mode-badge.volleyball {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.mode-badge.tennis {
+    background: #c8e6c9;
+    color: #388e3c;
 }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
@@ -197,6 +369,22 @@ canvas {
     <button class="menu-button" id="createBtn">Create Lobby</button>
     <button class="menu-button" id="joinBtn">Join Lobby</button>
     <button class="menu-button" id="soloBtn">Play vs AI</button>
+    <button class="menu-button secondary" id="settingsBtn">Settings</button>
+</div>
+
+<div id="settingsScreen" class="screen">
+    <button class="back-button" id="settingsBackBtn">← Back</button>
+    <div id="settingsTitle">Settings</div>
+    <div class="settings-option">
+        <div>
+            <div class="settings-label">🎾 Tennis Mode</div>
+            <div class="settings-description">Play tennis instead of volleyball</div>
+        </div>
+        <div class="toggle" id="tennisToggle"></div>
+    </div>
+    <p style="margin-top: 20px; color: #666; font-size: 12px; text-align: center; max-width: 300px;">
+        Both players must have Tennis Mode enabled to play tennis together.
+    </p>
 </div>
 
 <div id="lobbyScreen" class="screen">
@@ -217,7 +405,17 @@ canvas {
 <div id="gameContainer">
     <div id="mode-indicator"></div>
     <div id="score">0 - 0</div>
-    <canvas id="game" width="800" height="450"></canvas>
+    <div class="game-wrapper">
+        <canvas id="game" width="800" height="450"></canvas>
+        <div id="chatPanel">
+            <div id="chatHeader">Chat</div>
+            <div id="chatMessages"></div>
+            <div id="chatInputWrapper">
+                <input type="text" id="chatInput" placeholder="Type message..." maxlength="100">
+                <button id="chatSend">→</button>
+            </div>
+        </div>
+    </div>
     <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike</div>
 </div>
 
@@ -229,11 +427,22 @@ const H = canvas.height;
 
 const GROUND_Y = H - 40;
 const NET_X = W / 2;
-const NET_HEIGHT = 120;
-const NET_TOP = GROUND_Y - NET_HEIGHT;
 const GRAVITY = 0.32;
 const BALL_GRAVITY = 0.20;
 const HIT_RANGE = 80;
+
+// Game settings
+let tennisMode = false;
+let activeTennisMode = false; // What's actually being played
+
+// Net heights differ between modes
+function getNetHeight() {
+    return activeTennisMode ? 70 : 120;
+}
+
+function getNetTop() {
+    return GROUND_Y - getNetHeight();
+}
 
 let playerScore = 0;
 let opponentScore = 0;
@@ -247,891 +456,1100 @@ let peer = null;
 let conn = null;
 let isHost = false;
 let lobbyCode = '';
+let opponentTennisMode = false;
 
 const keys = {};
 let clickedThisFrame = false;
 let setPressed = false;
 let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
 
+// ==================== CHAT ====================
+function addChatMessage(text, type) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const msg = document.createElement('div');
+    msg.className = 'chat-message ' + type;
+    msg.textContent = text;
+    messagesDiv.appendChild(msg);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (text && conn && conn.open) {
+        conn.send({ type: 'chat', message: text });
+        addChatMessage(text, 'you');
+        input.value = '';
+    }
+}
+
+document.getElementById('chatSend').addEventListener('click', sendChatMessage);
+document.getElementById('chatInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendChatMessage();
+    }
+});
+
 // ==================== SOUND EFFECTS ====================
 let audioCtx = null;
 function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
 }
 
 function playSound(type) {
-  if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  const now = audioCtx.currentTime;
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
 
-  switch(type) {
-    case 'set':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(500, now);
-      osc.frequency.exponentialRampToValueAtTime(700, now + 0.1);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.start(now);
-      osc.stop(now + 0.15);
-      break;
-    case 'bump':
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.exponentialRampToValueAtTime(500, now + 0.08);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.start(now);
-      osc.stop(now + 0.2);
-      break;
-    case 'spike':
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(200, now);
-      osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.start(now);
-      osc.stop(now + 0.18);
-      break;
-    case 'score':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523, now);
-      osc.frequency.setValueAtTime(659, now + 0.12);
-      osc.frequency.setValueAtTime(784, now + 0.24);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.setValueAtTime(0.2, now + 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-      osc.start(now);
-      osc.stop(now + 0.5);
-      break;
-    case 'lose':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-      osc.start(now);
-      osc.stop(now + 0.4);
-      break;
-    case 'net':
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(180, now);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc.start(now);
-      osc.stop(now + 0.12);
-      break;
-    case 'bounce':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(250, now);
-      osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      osc.start(now);
-      osc.stop(now + 0.1);
-      break;
-    case 'whistle':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.setValueAtTime(1000, now + 0.1);
-      osc.frequency.setValueAtTime(800, now + 0.2);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-      osc.start(now);
-      osc.stop(now + 0.35);
-      break;
-  }
+    switch(type) {
+        case 'set':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, now);
+            osc.frequency.exponentialRampToValueAtTime(700, now + 0.1);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+        case 'bump':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(500, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+            break;
+        case 'spike':
+        case 'hit':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.start(now);
+            osc.stop(now + 0.18);
+            break;
+        case 'score':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523, now);
+            osc.frequency.setValueAtTime(659, now + 0.12);
+            osc.frequency.setValueAtTime(784, now + 0.24);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.setValueAtTime(0.2, now + 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+            break;
+        case 'lose':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+            break;
+        case 'net':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(180, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+            break;
+        case 'bounce':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(activeTennisMode ? 400 : 250, now);
+            osc.frequency.exponentialRampToValueAtTime(activeTennisMode ? 200 : 150, now + 0.08);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+            break;
+        case 'whistle':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.setValueAtTime(1000, now + 0.1);
+            osc.frequency.setValueAtTime(800, now + 0.2);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+            break;
+    }
 }
 
 // ==================== SCREENS ====================
 function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-  document.getElementById('gameContainer').style.display = 'none';
-  if (screenId === 'game') {
-    document.getElementById('gameContainer').style.display = 'flex';
-  } else {
-    document.getElementById(screenId).style.display = 'flex';
-  }
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById('gameContainer').style.display = 'none';
+    if (screenId === 'game') {
+        document.getElementById('gameContainer').style.display = 'flex';
+    } else {
+        document.getElementById(screenId).style.display = 'flex';
+    }
+}
+
+// ==================== SETTINGS ====================
+const tennisToggle = document.getElementById('tennisToggle');
+tennisToggle.addEventListener('click', () => {
+    tennisMode = !tennisMode;
+    tennisToggle.classList.toggle('active', tennisMode);
+    localStorage.setItem('tennisMode', tennisMode);
+});
+
+// Load saved settings
+if (localStorage.getItem('tennisMode') === 'true') {
+    tennisMode = true;
+    tennisToggle.classList.add('active');
 }
 
 // ==================== MULTIPLAYER ====================
 function generateCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 5; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
 }
 
 function createLobby() {
-  lobbyCode = generateCode();
-  document.getElementById('lobbyCode').textContent = lobbyCode;
-  document.getElementById('waitingStatus').innerHTML = 'Waiting for opponent<span class="loading-dots"></span>';
-  showScreen('waitingScreen');
-  
-  peer = new Peer('vball-' + lobbyCode);
-  
-  peer.on('open', (id) => {
-    console.log('Lobby created:', id);
-  });
-  
-  peer.on('connection', (connection) => {
-    conn = connection;
-    isHost = true;
-    gameMode = 'host';
+    lobbyCode = generateCode();
+    document.getElementById('lobbyCode').textContent = lobbyCode;
+    document.getElementById('waitingStatus').innerHTML = 'Waiting for opponent<span class="loading-dots"></span>';
+    showScreen('waitingScreen');
     
-    conn.on('open', () => {
-      console.log('Host: connection opened');
-      setupConnectionHandlers();
+    peer = new Peer('vball-' + lobbyCode);
+    
+    peer.on('open', (id) => {
+        console.log('Lobby created:', id);
     });
     
-    conn.on('data', (data) => {
-      handleNetworkData(data);
+    peer.on('connection', (connection) => {
+        conn = connection;
+        isHost = true;
+        gameMode = 'host';
+        
+        conn.on('open', () => {
+            console.log('Host: connection opened');
+            setupConnectionHandlers();
+        });
+        
+        conn.on('data', (data) => {
+            handleNetworkData(data);
+        });
     });
-  });
-  
-  peer.on('error', (err) => {
-    console.error('Peer error:', err);
-    if (err.type === 'unavailable-id') {
-      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, retrying...</span>';
-      setTimeout(() => {
-        cleanupPeer();
-        createLobby();
-      }, 1000);
-    } else {
-      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Error: ' + err.type + '</span>';
-    }
-  });
+    
+    peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        if (err.type === 'unavailable-id') {
+            document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, retrying...</span>';
+            setTimeout(() => {
+                cleanupPeer();
+                createLobby();
+            }, 1000);
+        } else {
+            document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Error: ' + err.type + '</span>';
+        }
+    });
 }
 
 function joinLobby() {
-  const code = document.getElementById('lobbyInput').value.toUpperCase().trim();
-  if (code.length < 3) {
-    document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Please enter a valid code</span>';
-    return;
-  }
-  
-  document.getElementById('lobbyStatus').innerHTML = 'Connecting<span class="loading-dots"></span>';
-  document.getElementById('connectBtn').disabled = true;
-  
-  peer = new Peer();
-  
-  peer.on('open', () => {
-    console.log('Client peer opened, connecting to host...');
-    conn = peer.connect('vball-' + code, { reliable: true });
-    
-    conn.on('open', () => {
-      console.log('Client: connection opened');
-      isHost = false;
-      gameMode = 'client';
-      setupConnectionHandlers();
-      
-      // Tell host we're ready
-      console.log('Client: sending ready signal');
-      conn.send({ type: 'ready' });
-    });
-    
-    conn.on('data', (data) => {
-      handleNetworkData(data);
-    });
-    
-    conn.on('error', (err) => {
-      console.error('Connection error:', err);
-      document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
-      document.getElementById('connectBtn').disabled = false;
-    });
-  });
-  
-  peer.on('error', (err) => {
-    console.error('Peer error:', err);
-    document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Lobby not found</span>';
-    document.getElementById('connectBtn').disabled = false;
-  });
-  
-  setTimeout(() => {
-    if (!conn || !conn.open) {
-      document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection timeout</span>';
-      document.getElementById('connectBtn').disabled = false;
+    const code = document.getElementById('lobbyInput').value.toUpperCase().trim();
+    if (code.length < 3) {
+        document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Please enter a valid code</span>';
+        return;
     }
-  }, 10000);
+    
+    document.getElementById('lobbyStatus').innerHTML = 'Connecting<span class="loading-dots"></span>';
+    document.getElementById('connectBtn').disabled = true;
+    
+    peer = new Peer();
+    
+    peer.on('open', () => {
+        console.log('Client peer opened, connecting to host...');
+        conn = peer.connect('vball-' + code, { reliable: true });
+        
+        conn.on('open', () => {
+            console.log('Client: connection opened');
+            isHost = false;
+            gameMode = 'client';
+            setupConnectionHandlers();
+            
+            console.log('Client: sending ready signal');
+            conn.send({ type: 'ready', tennisMode: tennisMode });
+        });
+        
+        conn.on('data', (data) => {
+            handleNetworkData(data);
+        });
+        
+        conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
+            document.getElementById('connectBtn').disabled = false;
+        });
+    });
+    
+    peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Lobby not found</span>';
+        document.getElementById('connectBtn').disabled = false;
+    });
+    
+    setTimeout(() => {
+        if (!conn || !conn.open) {
+            document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection timeout</span>';
+            document.getElementById('connectBtn').disabled = false;
+        }
+    }, 10000);
 }
 
 function setupConnectionHandlers() {
-  conn.on('close', () => {
-    alert('Opponent disconnected');
-    location.reload();
-  });
+    conn.on('close', () => {
+        alert('Opponent disconnected');
+        location.reload();
+    });
 }
 
 function handleNetworkData(data) {
-  console.log('Received:', data.type);
-  
-  if (data.type === 'ready' && isHost) {
-    // Client is ready, start the game
-    console.log('Host: client is ready, starting game');
-    startMultiplayerGame();
-  } else if (data.type === 'start' && !isHost) {
-    // Host says start
-    console.log('Client: received start signal');
-    startMultiplayerGame();
-  } else if (data.type === 'state' && !isHost) {
-    // Client receives state from host
-    player.x = W - data.opponent.x - player.w;
-    player.y = data.opponent.y;
-    opponent.x = W - data.player.x - opponent.w;
-    opponent.y = data.player.y;
-    ball.x = W - data.ball.x;
-    ball.y = data.ball.y;
-    ball.vx = -data.ball.vx;
-    ball.vy = data.ball.vy;
-    playerScore = data.opponentScore;
-    opponentScore = data.playerScore;
-    gameState = data.gameState;
-    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
-  } else if (data.type === 'input' && isHost) {
-    // Host receives input from client
-    remoteInput = data.input;
-  } else if (data.type === 'sound') {
-    playSound(data.sound);
-  }
+    console.log('Received:', data.type);
+    
+    if (data.type === 'ready' && isHost) {
+        opponentTennisMode = data.tennisMode;
+        console.log('Host: client is ready, their tennis mode:', opponentTennisMode);
+        startMultiplayerGame();
+    } else if (data.type === 'start' && !isHost) {
+        opponentTennisMode = data.tennisMode;
+        activeTennisMode = tennisMode && opponentTennisMode;
+        console.log('Client: received start signal, tennis mode:', activeTennisMode);
+        beginGame();
+    } else if (data.type === 'state' && !isHost) {
+        player.x = W - data.opponent.x - player.w;
+        player.y = data.opponent.y;
+        opponent.x = W - data.player.x - opponent.w;
+        opponent.y = data.player.y;
+        ball.x = W - data.ball.x;
+        ball.y = data.ball.y;
+        ball.vx = -data.ball.vx;
+        ball.vy = data.ball.vy;
+        playerScore = data.opponentScore;
+        opponentScore = data.playerScore;
+        gameState = data.gameState;
+        document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+    } else if (data.type === 'input' && isHost) {
+        remoteInput = data.input;
+    } else if (data.type === 'sound') {
+        playSound(data.sound);
+    } else if (data.type === 'chat') {
+        addChatMessage(data.message, 'opponent');
+    }
 }
 
 function sendState() {
-  if (conn && conn.open && isHost) {
-    conn.send({
-      type: 'state',
-      player: { x: player.x, y: player.y },
-      opponent: { x: opponent.x, y: opponent.y },
-      ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
-      playerScore: playerScore,
-      opponentScore: opponentScore,
-      gameState: gameState
-    });
-  }
+    if (conn && conn.open && isHost) {
+        conn.send({
+            type: 'state',
+            player: { x: player.x, y: player.y },
+            opponent: { x: opponent.x, y: opponent.y },
+            ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
+            playerScore: playerScore,
+            opponentScore: opponentScore,
+            gameState: gameState
+        });
+    }
 }
 
 function sendInput() {
-  if (conn && conn.open && !isHost) {
-    conn.send({
-      type: 'input',
-      input: {
-        left: keys['a'],
-        right: keys['d'],
-        jump: keys['w'] || keys[' '],
-        set: setPressed,
-        click: clickedThisFrame
-      }
-    });
-  }
+    if (conn && conn.open && !isHost) {
+        conn.send({
+            type: 'input',
+            input: {
+                left: keys['a'],
+                right: keys['d'],
+                jump: keys['w'] || keys[' '],
+                set: setPressed,
+                click: clickedThisFrame
+            }
+        });
+    }
 }
 
 function startMultiplayerGame() {
-  if (isHost) {
-    // Send start signal to client
-    conn.send({ type: 'start' });
-  }
-  document.getElementById('mode-indicator').textContent = isHost ? '🟢 Hosting' : '🔵 Connected';
-  initAudio();
-  playSound('whistle');
-  showScreen('game');
-  gameState = 'playing';
-  playerScore = 0;
-  opponentScore = 0;
-  resetRound();
+    activeTennisMode = tennisMode && opponentTennisMode;
+    conn.send({ type: 'start', tennisMode: tennisMode });
+    beginGame();
+}
+
+function beginGame() {
+    let modeText = isHost ? '🟢 Hosting' : '🔵 Connected';
+    let modeBadge = activeTennisMode ? '<span class="mode-badge tennis">TENNIS</span>' : '<span class="mode-badge volleyball">VOLLEYBALL</span>';
+    document.getElementById('mode-indicator').innerHTML = modeText + modeBadge;
+    
+    // Clear chat
+    document.getElementById('chatMessages').innerHTML = '';
+    
+    if (gameMode !== 'solo') {
+        if (activeTennisMode) {
+            addChatMessage('Tennis mode enabled!', 'system');
+        } else if (tennisMode !== opponentTennisMode) {
+            addChatMessage('Tennis mode mismatch - playing volleyball', 'system');
+        }
+        addChatMessage('Game started!', 'system');
+    }
+    
+    initAudio();
+    playSound('whistle');
+    showScreen('game');
+    gameState = 'playing';
+    playerScore = 0;
+    opponentScore = 0;
+    resetRound();
 }
 
 function cleanupPeer() {
-  if (conn) conn.close();
-  if (peer) peer.destroy();
-  conn = null;
-  peer = null;
+    if (conn) conn.close();
+    if (peer) peer.destroy();
+    conn = null;
+    peer = null;
 }
 
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
-  if (document.activeElement.tagName === 'INPUT') {
-    return;
-  }
-  
-  keys[e.key.toLowerCase()] = true;
-  
-  if (e.key.toLowerCase() === 'q') {
-    setPressed = true;
-  }
-  
-  if (gameState === 'playing' || gameState === 'roundOver') {
-    e.preventDefault();
-  }
+    if (document.activeElement.tagName === 'INPUT') {
+        return;
+    }
+    
+    keys[e.key.toLowerCase()] = true;
+    
+    if (e.key.toLowerCase() === 'q') {
+        setPressed = true;
+    }
+    
+    if (gameState === 'playing' || gameState === 'roundOver') {
+        e.preventDefault();
+    }
 });
 
 document.addEventListener('keyup', e => {
-  keys[e.key.toLowerCase()] = false;
+    keys[e.key.toLowerCase()] = false;
 });
 
 canvas.addEventListener('mousedown', e => {
-  initAudio();
-  clickedThisFrame = true;
+    initAudio();
+    clickedThisFrame = true;
 });
 
 // Menu buttons
 document.getElementById('createBtn').addEventListener('click', () => {
-  initAudio();
-  createLobby();
+    initAudio();
+    createLobby();
 });
 
 document.getElementById('joinBtn').addEventListener('click', () => {
-  initAudio();
-  document.getElementById('lobbyStatus').textContent = '';
-  document.getElementById('lobbyInput').value = '';
-  document.getElementById('connectBtn').disabled = false;
-  showScreen('lobbyScreen');
-  setTimeout(() => {
-    document.getElementById('lobbyInput').focus();
-  }, 100);
+    initAudio();
+    document.getElementById('lobbyStatus').textContent = '';
+    document.getElementById('lobbyInput').value = '';
+    document.getElementById('connectBtn').disabled = false;
+    showScreen('lobbyScreen');
+    setTimeout(() => {
+        document.getElementById('lobbyInput').focus();
+    }, 100);
 });
 
 document.getElementById('soloBtn').addEventListener('click', () => {
-  initAudio();
-  gameMode = 'solo';
-  document.getElementById('mode-indicator').textContent = 'vs AI';
-  playSound('whistle');
-  showScreen('game');
-  gameState = 'playing';
-  playerScore = 0;
-  opponentScore = 0;
-  resetRound();
+    initAudio();
+    gameMode = 'solo';
+    activeTennisMode = tennisMode;
+    let modeBadge = activeTennisMode ? '<span class="mode-badge tennis">TENNIS</span>' : '<span class="mode-badge volleyball">VOLLEYBALL</span>';
+    document.getElementById('mode-indicator').innerHTML = 'vs AI ' + modeBadge;
+    document.getElementById('chatMessages').innerHTML = '';
+    addChatMessage('Playing against AI', 'system');
+    playSound('whistle');
+    showScreen('game');
+    gameState = 'playing';
+    playerScore = 0;
+    opponentScore = 0;
+    resetRound();
+});
+
+document.getElementById('settingsBtn').addEventListener('click', () => {
+    showScreen('settingsScreen');
+});
+
+document.getElementById('settingsBackBtn').addEventListener('click', () => {
+    showScreen('menuScreen');
 });
 
 document.getElementById('connectBtn').addEventListener('click', () => {
-  initAudio();
-  joinLobby();
+    initAudio();
+    joinLobby();
 });
 
 document.getElementById('lobbyBackBtn').addEventListener('click', () => {
-  cleanupPeer();
-  showScreen('menuScreen');
+    cleanupPeer();
+    showScreen('menuScreen');
 });
 
 document.getElementById('waitingBackBtn').addEventListener('click', () => {
-  cleanupPeer();
-  showScreen('menuScreen');
+    cleanupPeer();
+    showScreen('menuScreen');
 });
 
 document.getElementById('lobbyInput').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    initAudio();
-    joinLobby();
-  }
+    if (e.key === 'Enter') {
+        initAudio();
+        joinLobby();
+    }
 });
 
 // ==================== ENTITIES ====================
 const player = {
-  x: 150, y: GROUND_Y - 50, w: 50, h: 50,
-  vx: 0, vy: 0, speed: 3.5, jumpPower: -8,
-  onGround: true, color: '#3366ff', facingRight: true
+    x: 150, y: GROUND_Y - 50, w: 50, h: 50,
+    vx: 0, vy: 0, speed: 3.5, jumpPower: -8,
+    onGround: true, facingRight: true
 };
 
 const opponent = {
-  x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
-  vx: 0, vy: 0, speed: 3.2, jumpPower: -8,
-  onGround: true, color: '#ff4444',
-  actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
-  personality: 0, lastDecision: 0, mistakeChance: 0
+    x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
+    vx: 0, vy: 0, speed: 3.2, jumpPower: -8,
+    onGround: true,
+    actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
+    personality: 0, lastDecision: 0, mistakeChance: 0
 };
 
 const ball = {
-  x: 200, y: 150, r: 14,
-  vx: 0, vy: 0, color: '#fff',
-  lastHitBy: null
+    x: 200, y: 150, r: 14,
+    vx: 0, vy: 0,
+    lastHitBy: null, bounceCount: 0
 };
 
 // ==================== GAME LOGIC ====================
 function resetRound() {
-  player.x = 150; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
-  opponent.x = W - 200; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
-  opponent.actionCooldown = 0;
-  opponent.hitCount = 0;
-  opponent.personality = Math.random();
-  opponent.mistakeChance = 0.08 + Math.random() * 0.07;
+    player.x = 150; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
+    opponent.x = W - 200; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
+    opponent.actionCooldown = 0;
+    opponent.hitCount = 0;
+    opponent.personality = Math.random();
+    opponent.mistakeChance = 0.08 + Math.random() * 0.07;
 
-  ball.vy = 0;
-  ball.vx = 0;
-  ball.lastHitBy = null;
-  if (serveSide === 'player') {
-    ball.x = 200; ball.y = 130;
-  } else {
-    ball.x = W - 200; ball.y = 130;
-  }
-  gameState = 'playing';
-  roundTimer = 0;
-  document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+    ball.vy = 0;
+    ball.vx = 0;
+    ball.lastHitBy = null;
+    ball.bounceCount = 0;
+    if (serveSide === 'player') {
+        ball.x = 200; ball.y = 130;
+    } else {
+        ball.x = W - 200; ball.y = 130;
+    }
+    gameState = 'playing';
+    roundTimer = 0;
+    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 function dist(x1, y1, x2, y2) {
-  let dx = x1 - x2, dy = y1 - y2;
-  return Math.sqrt(dx * dx + dy * dy);
+    let dx = x1 - x2, dy = y1 - y2;
+    return Math.sqrt(dx * dx + dy * dy);
 }
 
 function ballCenter(rect) {
-  return dist(rect.x + rect.w / 2, rect.y + rect.h / 2, ball.x, ball.y);
+    return dist(rect.x + rect.w / 2, rect.y + rect.h / 2, ball.x, ball.y);
 }
 
 function capBallSpeed(maxSpd) {
-  let spd = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-  if (spd > maxSpd) {
-    ball.vx = (ball.vx / spd) * maxSpd;
-    ball.vy = (ball.vy / spd) * maxSpd;
-  }
+    let spd = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (spd > maxSpd) {
+        ball.vx = (ball.vx / spd) * maxSpd;
+        ball.vy = (ball.vy / spd) * maxSpd;
+    }
 }
 
 function doSet(rect, direction) {
-  if (ballCenter(rect) > HIT_RANGE) return false;
-  ball.vx = direction * 1.5;
-  ball.vy = -9;
-  ball.lastHitBy = rect === player ? 'player' : 'opponent';
-  playSound('set');
-  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'set' });
-  return true;
+    if (ballCenter(rect) > HIT_RANGE) return false;
+    ball.vx = direction * 1.5;
+    ball.vy = -9;
+    ball.lastHitBy = rect === player ? 'player' : 'opponent';
+    ball.bounceCount = 0;
+    playSound('set');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'set' });
+    return true;
 }
 
 function doBump(rect, direction) {
-  if (ballCenter(rect) > HIT_RANGE) return false;
-  ball.vx = direction * 6;
-  ball.vy = -7;
-  ball.lastHitBy = rect === player ? 'player' : 'opponent';
-  capBallSpeed(11);
-  playSound('bump');
-  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'bump' });
-  return true;
+    if (ballCenter(rect) > HIT_RANGE) return false;
+    ball.vx = direction * 6;
+    ball.vy = -7;
+    ball.lastHitBy = rect === player ? 'player' : 'opponent';
+    ball.bounceCount = 0;
+    capBallSpeed(11);
+    playSound(activeTennisMode ? 'hit' : 'bump');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: activeTennisMode ? 'hit' : 'bump' });
+    return true;
 }
 
 function doSpike(rect, direction) {
-  if (ballCenter(rect) > HIT_RANGE) return false;
-  let distToNet = Math.abs(ball.x - NET_X);
-  let spikeVx = direction * (8 + Math.min(distToNet / 50, 3));
-  let spikeVy = 2 + (ball.y < NET_TOP ? 3 : 1);
-  
-  ball.vx = spikeVx;
-  ball.vy = spikeVy;
-  ball.lastHitBy = rect === player ? 'player' : 'opponent';
-  capBallSpeed(13);
-  playSound('spike');
-  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'spike' });
-  return true;
+    if (ballCenter(rect) > HIT_RANGE) return false;
+    let distToNet = Math.abs(ball.x - NET_X);
+    let spikeVx = direction * (8 + Math.min(distToNet / 50, 3));
+    let spikeVy = 2 + (ball.y < getNetTop() ? 3 : 1);
+    
+    ball.vx = spikeVx;
+    ball.vy = spikeVy;
+    ball.lastHitBy = rect === player ? 'player' : 'opponent';
+    ball.bounceCount = 0;
+    capBallSpeed(13);
+    playSound(activeTennisMode ? 'hit' : 'spike');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: activeTennisMode ? 'hit' : 'spike' });
+    return true;
 }
 
 function rectCircleCollision(rx, ry, rw, rh, cx, cy, cr) {
-  let closestX = clamp(cx, rx, rx + rw);
-  let closestY = clamp(cy, ry, ry + rh);
-  let dx = cx - closestX, dy = cy - closestY;
-  return (dx * dx + dy * dy) < (cr * cr);
+    let closestX = clamp(cx, rx, rx + rw);
+    let closestY = clamp(cy, ry, ry + rh);
+    let dx = cx - closestX, dy = cy - closestY;
+    return (dx * dx + dy * dy) < (cr * cr);
 }
 
 function pushBallOutOfRect(rect) {
-  let closestX = clamp(ball.x, rect.x, rect.x + rect.w);
-  let closestY = clamp(ball.y, rect.y, rect.y + rect.h);
-  let dx = ball.x - closestX, dy = ball.y - closestY;
-  let d = Math.sqrt(dx * dx + dy * dy);
-  if (d === 0) { dx = 0; dy = -1; d = 1; }
-  let overlap = ball.r - d;
-  if (overlap > 0) {
-    ball.x += (dx / d) * (overlap + 1);
-    ball.y += (dy / d) * (overlap + 1);
-  }
+    let closestX = clamp(ball.x, rect.x, rect.x + rect.w);
+    let closestY = clamp(ball.y, rect.y, rect.y + rect.h);
+    let dx = ball.x - closestX, dy = ball.y - closestY;
+    let d = Math.sqrt(dx * dx + dy * dy);
+    if (d === 0) { dx = 0; dy = -1; d = 1; }
+    let overlap = ball.r - d;
+    if (overlap > 0) {
+        ball.x += (dx / d) * (overlap + 1);
+        ball.y += (dy / d) * (overlap + 1);
+    }
 }
 
 // ==================== PLAYER ====================
 function updatePlayer() {
-  player.vx = 0;
-  if (keys['a']) { player.vx = -player.speed; player.facingRight = false; }
-  if (keys['d']) { player.vx = player.speed; player.facingRight = true; }
-  if ((keys['w'] || keys[' ']) && player.onGround) {
-    player.vy = player.jumpPower;
-    player.onGround = false;
-  }
-
-  if (setPressed) {
-    setPressed = false;
-    doSet(player, 1);
-  }
-
-  if (clickedThisFrame) {
-    if (!player.onGround && ball.y < player.y + 20) {
-      doSpike(player, 1);
-    } else {
-      doBump(player, 1);
+    player.vx = 0;
+    if (keys['a']) { player.vx = -player.speed; player.facingRight = false; }
+    if (keys['d']) { player.vx = player.speed; player.facingRight = true; }
+    if ((keys['w'] || keys[' ']) && player.onGround) {
+        player.vy = player.jumpPower;
+        player.onGround = false;
     }
-  }
 
-  player.vy += GRAVITY;
-  player.x += player.vx;
-  player.y += player.vy;
+    if (setPressed) {
+        setPressed = false;
+        doSet(player, 1);
+    }
 
-  if (player.y + player.h >= GROUND_Y) {
-    player.y = GROUND_Y - player.h;
-    player.vy = 0;
-    player.onGround = true;
-  }
-  player.x = clamp(player.x, 0, NET_X - player.w - 5);
+    if (clickedThisFrame) {
+        if (!player.onGround && ball.y < player.y + 20) {
+            doSpike(player, 1);
+        } else {
+            doBump(player, 1);
+        }
+    }
+
+    player.vy += GRAVITY;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    if (player.y + player.h >= GROUND_Y) {
+        player.y = GROUND_Y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+    }
+    player.x = clamp(player.x, 0, NET_X - player.w - 5);
 }
 
 // ==================== OPPONENT ====================
 function updateOpponent() {
-  if (gameMode === 'host') {
-    opponent.vx = 0;
-    if (remoteInput.left) opponent.vx = opponent.speed;
-    if (remoteInput.right) opponent.vx = -opponent.speed;
-    if (remoteInput.jump && opponent.onGround) {
-      opponent.vy = opponent.jumpPower;
-      opponent.onGround = false;
+    if (gameMode === 'host') {
+        opponent.vx = 0;
+        if (remoteInput.left) opponent.vx = opponent.speed;
+        if (remoteInput.right) opponent.vx = -opponent.speed;
+        if (remoteInput.jump && opponent.onGround) {
+            opponent.vy = opponent.jumpPower;
+            opponent.onGround = false;
+        }
+        if (remoteInput.set) {
+            remoteInput.set = false;
+            doSet(opponent, -1);
+        }
+        if (remoteInput.click) {
+            remoteInput.click = false;
+            if (!opponent.onGround && ball.y < opponent.y + 20) {
+                doSpike(opponent, -1);
+            } else {
+                doBump(opponent, -1);
+            }
+        }
+    } else if (gameMode === 'solo') {
+        updateAI();
     }
-    if (remoteInput.set) {
-      remoteInput.set = false;
-      doSet(opponent, -1);
-    }
-    if (remoteInput.click) {
-      remoteInput.click = false;
-      if (!opponent.onGround && ball.y < opponent.y + 20) {
-        doSpike(opponent, -1);
-      } else {
-        doBump(opponent, -1);
-      }
-    }
-  } else if (gameMode === 'solo') {
-    updateAI();
-  }
 
-  if (gameMode !== 'client') {
-    opponent.vy += GRAVITY;
-    opponent.x += opponent.vx;
-    opponent.y += opponent.vy;
+    if (gameMode !== 'client') {
+        opponent.vy += GRAVITY;
+        opponent.x += opponent.vx;
+        opponent.y += opponent.vy;
 
-    if (opponent.y + opponent.h >= GROUND_Y) {
-      opponent.y = GROUND_Y - opponent.h;
-      opponent.vy = 0;
-      opponent.onGround = true;
+        if (opponent.y + opponent.h >= GROUND_Y) {
+            opponent.y = GROUND_Y - opponent.h;
+            opponent.vy = 0;
+            opponent.onGround = true;
+        }
+        opponent.x = clamp(opponent.x, NET_X + 5, W - opponent.w);
     }
-    opponent.x = clamp(opponent.x, NET_X + 5, W - opponent.w);
-  }
 }
 
 function updateAI() {
-  opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
-  opponent.lastDecision++;
+    opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
+    opponent.lastDecision++;
 
-  let ballOnMySide = ball.x > NET_X;
-  let distToB = ballCenter(opponent);
+    let ballOnMySide = ball.x > NET_X;
+    let distToB = ballCenter(opponent);
+    const NET_TOP = getNetTop();
 
-  let predictX = ball.x;
-  let predictY = ball.y;
-  let pvx = ball.vx;
-  let pvy = ball.vy;
-  for (let i = 0; i < 80; i++) {
-    pvy += BALL_GRAVITY;
-    predictX += pvx;
-    predictY += pvy;
-    if (predictY >= GROUND_Y - 20) break;
-  }
-
-  if (opponent.lastDecision > 30 + Math.random() * 20) {
-    opponent.lastDecision = 0;
-    
-    if (Math.random() < opponent.mistakeChance) {
-      opponent.targetX = opponent.x + (Math.random() - 0.5) * 100;
-    } else if (ballOnMySide) {
-      if (opponent.personality < 0.3) {
-        opponent.targetX = ball.x - opponent.w / 2 + (Math.random() - 0.5) * 30;
-      } else if (opponent.personality < 0.7) {
-        opponent.targetX = predictX - opponent.w / 2 + (Math.random() - 0.5) * 20;
-      } else {
-        opponent.targetX = Math.max(predictX - opponent.w / 2, W * 0.65);
-      }
-    } else {
-      opponent.targetX = W * (0.7 + opponent.personality * 0.1) - opponent.w / 2;
-    }
-  }
-
-  opponent.targetX = clamp(opponent.targetX, NET_X + 10, W - opponent.w - 10);
-
-  let diff = opponent.targetX - opponent.x;
-  let moveThreshold = 8 + Math.random() * 5;
-  
-  if (Math.abs(diff) > moveThreshold) {
-    let speedMod = 0.85 + Math.random() * 0.3;
-    opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * speedMod;
-  } else {
-    opponent.vx = 0;
-  }
-
-  if (ballOnMySide && opponent.actionCooldown <= 0) {
-    let ballComingDown = ball.vy > 0;
-    let ballNear = distToB < HIT_RANGE + 20;
-    let ballAbove = ball.y < opponent.y;
-    let ballHigh = ball.y < NET_TOP - 20;
-
-    if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
-      let shouldJump = ball.y < NET_TOP + 80;
-      if (shouldJump && Math.random() > 0.15) {
-        let jumpDelay = Math.floor(Math.random() * 8);
-        setTimeout(() => {
-          if (opponent.onGround) {
-            opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
-            opponent.onGround = false;
-          }
-        }, jumpDelay * 16);
-      }
+    let predictX = ball.x;
+    let predictY = ball.y;
+    let pvx = ball.vx;
+    let pvy = ball.vy;
+    for (let i = 0; i < 80; i++) {
+        pvy += BALL_GRAVITY;
+        predictX += pvx;
+        predictY += pvy;
+        if (predictY >= GROUND_Y - 20) break;
     }
 
-    if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
-      let actionDelay = Math.floor(Math.random() * 5);
-      
-      setTimeout(() => {
-        if (opponent.actionCooldown > 0) return;
+    if (opponent.lastDecision > 30 + Math.random() * 20) {
+        opponent.lastDecision = 0;
         
-        if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
-          if (Math.random() > 0.2) {
-            if (doSpike(opponent, -1)) {
-              opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
-              opponent.hitCount = 0;
+        if (Math.random() < opponent.mistakeChance) {
+            opponent.targetX = opponent.x + (Math.random() - 0.5) * 100;
+        } else if (ballOnMySide) {
+            if (opponent.personality < 0.3) {
+                opponent.targetX = ball.x - opponent.w / 2 + (Math.random() - 0.5) * 30;
+            } else if (opponent.personality < 0.7) {
+                opponent.targetX = predictX - opponent.w / 2 + (Math.random() - 0.5) * 20;
+            } else {
+                opponent.targetX = Math.max(predictX - opponent.w / 2, W * 0.65);
             }
-          }
+        } else {
+            opponent.targetX = W * (0.7 + opponent.personality * 0.1) - opponent.w / 2;
         }
-        else if (opponent.hitCount === 0 && ballComingDown) {
-          if (Math.random() > 0.3) {
-            if (doSet(opponent, -1)) {
-              opponent.actionCooldown = 12 + Math.floor(Math.random() * 8);
-              opponent.hitCount = 1;
-            }
-          }
-        }
-        else if (opponent.hitCount >= 1) {
-          if (doBump(opponent, -1)) {
-            opponent.actionCooldown = 18 + Math.floor(Math.random() * 12);
-            opponent.hitCount = 0;
-          }
-        }
-      }, actionDelay * 16);
     }
 
-    if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
-      if (doBump(opponent, -1)) {
-        opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+    opponent.targetX = clamp(opponent.targetX, NET_X + 10, W - opponent.w - 10);
+
+    let diff = opponent.targetX - opponent.x;
+    let moveThreshold = 8 + Math.random() * 5;
+    
+    if (Math.abs(diff) > moveThreshold) {
+        let speedMod = 0.85 + Math.random() * 0.3;
+        opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * speedMod;
+    } else {
+        opponent.vx = 0;
+    }
+
+    if (ballOnMySide && opponent.actionCooldown <= 0) {
+        let ballComingDown = ball.vy > 0;
+        let ballNear = distToB < HIT_RANGE + 20;
+        let ballAbove = ball.y < opponent.y;
+        let ballHigh = ball.y < NET_TOP - 20;
+
+        if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
+            let shouldJump = ball.y < NET_TOP + 80;
+            if (shouldJump && Math.random() > 0.15) {
+                let jumpDelay = Math.floor(Math.random() * 8);
+                setTimeout(() => {
+                    if (opponent.onGround) {
+                        opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
+                        opponent.onGround = false;
+                    }
+                }, jumpDelay * 16);
+            }
+        }
+
+        if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
+            let actionDelay = Math.floor(Math.random() * 5);
+            
+            setTimeout(() => {
+                if (opponent.actionCooldown > 0) return;
+                
+                if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
+                    if (Math.random() > 0.2) {
+                        if (doSpike(opponent, -1)) {
+                            opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+                            opponent.hitCount = 0;
+                        }
+                    }
+                }
+                else if (opponent.hitCount === 0 && ballComingDown) {
+                    if (Math.random() > 0.3) {
+                        if (activeTennisMode) {
+                            if (doBump(opponent, -1)) {
+                                opponent.actionCooldown = 15 + Math.floor(Math.random() * 8);
+                                opponent.hitCount = 0;
+                            }
+                        } else {
+                            if (doSet(opponent, -1)) {
+                                opponent.actionCooldown = 12 + Math.floor(Math.random() * 8);
+                                opponent.hitCount = 1;
+                            }
+                        }
+                    }
+                }
+                else if (opponent.hitCount >= 1) {
+                    if (doBump(opponent, -1)) {
+                        opponent.actionCooldown = 18 + Math.floor(Math.random() * 12);
+                        opponent.hitCount = 0;
+                    }
+                }
+            }, actionDelay * 16);
+        }
+
+        if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
+            if (doBump(opponent, -1)) {
+                opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+                opponent.hitCount = 0;
+            }
+        }
+    }
+
+    if (!ballOnMySide) {
         opponent.hitCount = 0;
-      }
     }
-  }
-
-  if (!ballOnMySide) {
-    opponent.hitCount = 0;
-  }
 }
 
 // ==================== BALL ====================
 function updateBall() {
-  if (gameMode === 'client') return;
+    if (gameMode === 'client') return;
 
-  ball.vy += BALL_GRAVITY;
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+    const NET_TOP = getNetTop();
+    const NET_HEIGHT = getNetHeight();
 
-  capBallSpeed(13);
+    ball.vy += BALL_GRAVITY;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
 
-  if (ball.x - ball.r < 0) {
-    ball.x = ball.r;
-    ball.vx = Math.abs(ball.vx) * 0.7;
-    playSound('bounce');
-  }
-  if (ball.x + ball.r > W) {
-    ball.x = W - ball.r;
-    ball.vx = -Math.abs(ball.vx) * 0.7;
-    playSound('bounce');
-  }
-  if (ball.y - ball.r < 0) {
-    ball.y = ball.r;
-    ball.vy = Math.abs(ball.vy) * 0.7;
-    playSound('bounce');
-  }
+    capBallSpeed(13);
 
-  let hitNet = false;
-  if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
-    if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
-      hitNet = true;
-      if (ball.x < NET_X) {
-        ball.x = NET_X - 4 - ball.r;
-        ball.vx = -Math.abs(ball.vx) * 0.6;
-      } else {
-        ball.x = NET_X + 4 + ball.r;
-        ball.vx = Math.abs(ball.vx) * 0.6;
-      }
+    if (ball.x - ball.r < 0) {
+        ball.x = ball.r;
+        ball.vx = Math.abs(ball.vx) * 0.7;
+        playSound('bounce');
     }
-  }
-  if (ball.x > NET_X - 10 && ball.x < NET_X + 10 && ball.y + ball.r > NET_TOP && ball.y < NET_TOP + 6) {
-    ball.y = NET_TOP - ball.r;
-    ball.vy = -Math.abs(ball.vy) * 0.5;
-    hitNet = true;
-  }
-  if (hitNet) playSound('net');
+    if (ball.x + ball.r > W) {
+        ball.x = W - ball.r;
+        ball.vx = -Math.abs(ball.vx) * 0.7;
+        playSound('bounce');
+    }
+    if (ball.y - ball.r < 0) {
+        ball.y = ball.r;
+        ball.vy = Math.abs(ball.vy) * 0.7;
+        playSound('bounce');
+    }
 
-  if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
-    pushBallOutOfRect(player);
-    ball.vy = Math.min(ball.vy, -2);
-    playSound('bounce');
-  }
-  if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
-    pushBallOutOfRect(opponent);
-    ball.vy = Math.min(ball.vy, -2);
-    playSound('bounce');
-  }
+    let hitNet = false;
+    if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
+        if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
+            hitNet = true;
+            if (ball.x < NET_X) {
+                ball.x = NET_X - 4 - ball.r;
+                ball.vx = -Math.abs(ball.vx) * 0.6;
+            } else {
+                ball.x = NET_X + 4 + ball.r;
+                ball.vx = Math.abs(ball.vx) * 0.6;
+            }
+        }
+    }
+    if (ball.x > NET_X - 10 && ball.x < NET_X + 10 && ball.y + ball.r > NET_TOP && ball.y < NET_TOP + 6) {
+        ball.y = NET_TOP - ball.r;
+        ball.vy = -Math.abs(ball.vy) * 0.5;
+        hitNet = true;
+    }
+    if (hitNet) playSound('net');
 
-  if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
+    if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
+        pushBallOutOfRect(player);
+        ball.vy = Math.min(ball.vy, -2);
+        playSound('bounce');
+    }
+    if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
+        pushBallOutOfRect(opponent);
+        ball.vy = Math.min(ball.vy, -2);
+        playSound('bounce');
+    }
+
+    // Ground bounce/score logic
+    if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
+        if (activeTennisMode) {
+            // Tennis: allow one bounce
+            ball.bounceCount++;
+            if (ball.bounceCount >= 2) {
+                // Second bounce = point
+                scorePoint();
+            } else {
+                // First bounce
+                ball.y = GROUND_Y - ball.r;
+                ball.vy = -ball.vy * 0.6;
+                ball.vx *= 0.8;
+                playSound('bounce');
+            }
+        } else {
+            // Volleyball: immediate score on ground touch
+            scorePoint();
+        }
+    }
+}
+
+function scorePoint() {
     gameState = 'roundOver';
     roundTimer = 90;
 
     if (ball.x < NET_X) {
-      opponentScore++;
-      serveSide = 'player';
-      playSound('lose');
+        opponentScore++;
+        serveSide = 'player';
+        playSound('lose');
     } else {
-      playerScore++;
-      serveSide = 'opponent';
-      playSound('score');
+        playerScore++;
+        serveSide = 'opponent';
+        playSound('score');
     }
     document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
     ball.vy = 0;
     ball.vx = 0;
     ball.y = GROUND_Y - ball.r;
-  }
 }
 
 // ==================== DRAWING ====================
+function getPlayerColor() {
+    return activeTennisMode ? '#2e7d32' : '#3366ff';
+}
+
+function getOpponentColor() {
+    return activeTennisMode ? '#c62828' : '#ff4444';
+}
+
+function getBallColor() {
+    return activeTennisMode ? '#ccff00' : '#ffffff';
+}
+
 function drawGame() {
-  let grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#87CEEB');
-  grad.addColorStop(1, '#d4eef7');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+    const NET_TOP = getNetTop();
+    const NET_HEIGHT = getNetHeight();
 
-  ctx.fillStyle = '#5a8f3c';
-  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]);
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  ctx.lineTo(W, GROUND_Y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.fillStyle = '#333';
-  ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
-  
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  for (let ny = NET_TOP + 15; ny < GROUND_Y; ny += 15) {
-    ctx.beginPath();
-    ctx.moveTo(NET_X - 3, ny);
-    ctx.lineTo(NET_X + 3, ny);
-    ctx.stroke();
-  }
-
-  let pDist = ballCenter(player);
-  if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
-    ctx.beginPath();
-    ctx.arc(player.x + player.w / 2, player.y + player.h / 2, HIT_RANGE, 0, Math.PI * 2);
-    ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(player.x + 5, GROUND_Y - 3, player.w - 10, 6);
-
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(player.x + 30, player.y + 12, 12, 12);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(opponent.x + 5, GROUND_Y - 3, opponent.w - 10, 6);
-
-  ctx.fillStyle = opponent.color;
-  ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(opponent.x + 8, opponent.y + 12, 12, 12);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(opponent.x + 10, opponent.y + 16, 4, 4);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.beginPath();
-  ctx.ellipse(ball.x, GROUND_Y, ball.r * 0.8, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = ball.color;
-  ctx.fill();
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(ball.x - 7, ball.y);
-  ctx.quadraticCurveTo(ball.x, ball.y + 7, ball.x + 7, ball.y);
-  ctx.strokeStyle = '#ddd';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.font = '13px monospace';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('YOU', player.x + 8, player.y - 8);
-  ctx.fillStyle = '#fcc';
-  let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
-  ctx.fillText(oppLabel, opponent.x + 14, opponent.y - 8);
-
-  if (gameState === 'roundOver') {
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 28px monospace';
-
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(W / 2 - 160, H / 2 - 70, 320, 65);
-
-    if (ball.x < NET_X) {
-      ctx.fillStyle = '#ff6666';
-      ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 38);
+    // Sky/Background
+    let grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (activeTennisMode) {
+        grad.addColorStop(0, '#4fc3f7');
+        grad.addColorStop(1, '#81d4fa');
     } else {
-      ctx.fillStyle = '#66ff66';
-      ctx.fillText('You Score!', W / 2, H / 2 - 38);
+        grad.addColorStop(0, '#87CEEB');
+        grad.addColorStop(1, '#d4eef7');
     }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Ground/Court
+    if (activeTennisMode) {
+        // Tennis court (hard court blue)
+        ctx.fillStyle = '#1565c0';
+        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+        
+        // Court lines
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        
+        // Baseline
+        ctx.beginPath();
+        ctx.moveTo(20, GROUND_Y);
+        ctx.lineTo(W - 20, GROUND_Y);
+        ctx.stroke();
+        
+        // Service boxes
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(100, GROUND_Y);
+        ctx.lineTo(100, GROUND_Y + 40);
+        ctx.moveTo(W - 100, GROUND_Y);
+        ctx.lineTo(W - 100, GROUND_Y + 40);
+        ctx.stroke();
+        
+        // Center mark
+        ctx.beginPath();
+        ctx.moveTo(NET_X, GROUND_Y);
+        ctx.lineTo(NET_X, GROUND_Y + 15);
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = '#5a8f3c';
+        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+        
+        // Court line
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(0, GROUND_Y);
+        ctx.lineTo(W, GROUND_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Net
+    if (activeTennisMode) {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(NET_X - 2, NET_TOP, 4, NET_HEIGHT);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(NET_X - 8, NET_TOP - 3, 16, 6);
+        
+        // Net mesh
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        for (let ny = NET_TOP + 10; ny < GROUND_Y; ny += 10) {
+            ctx.beginPath();
+            ctx.moveTo(NET_X - 2, ny);
+            ctx.lineTo(NET_X + 2, ny);
+            ctx.stroke();
+        }
+    } else {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
+        
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        for (let ny = NET_TOP + 15; ny < GROUND_Y; ny += 15) {
+            ctx.beginPath();
+            ctx.moveTo(NET_X - 3, ny);
+            ctx.lineTo(NET_X + 3, ny);
+            ctx.stroke();
+        }
+    }
+
+    // Hit range indicator
+    let pDist = ballCenter(player);
+    if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
+        ctx.beginPath();
+        ctx.arc(player.x + player.w / 2, player.y + player.h / 2, HIT_RANGE, 0, Math.PI * 2);
+        ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Player shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(player.x + 5, GROUND_Y - 3, player.w - 10, 6);
+
+    // Player (cube)
+    ctx.fillStyle = getPlayerColor();
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(player.x + 30, player.y + 12, 12, 12);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
+
+    // Opponent shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(opponent.x + 5, GROUND_Y - 3, opponent.w - 10, 6);
+
+    // Opponent (cube)
+    ctx.fillStyle = getOpponentColor();
+    ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(opponent.x + 8, opponent.y + 12, 12, 12);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(opponent.x + 10, opponent.y + 16, 4, 4);
+
+    // Ball shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(ball.x, GROUND_Y, ball.r * 0.8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fillStyle = getBallColor();
+    ctx.fill();
+    
+    if (activeTennisMode) {
+        // Tennis ball curve
+        ctx.strokeStyle = '#a0d400';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r * 0.6, -0.5, Math.PI + 0.5);
+        ctx.stroke();
+    } else {
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(ball.x - 7, ball.y);
+        ctx.quadraticCurveTo(ball.x, ball.y + 7, ball.x + 7, ball.y);
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    // Labels
     ctx.font = '13px monospace';
-    ctx.fillStyle = '#ddd';
-    ctx.fillText('next round starting...', W / 2, H / 2 - 16);
-    ctx.textAlign = 'left';
-  }
+    ctx.fillStyle = '#fff';
+    ctx.fillText('YOU', player.x + 8, player.y - 8);
+    ctx.fillStyle = '#fcc';
+    let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
+    ctx.fillText(oppLabel, opponent.x + 14, opponent.y - 8);
 
-  if (gameState === 'playing' && pDist < HIT_RANGE) {
-    ctx.textAlign = 'center';
-    ctx.font = '12px monospace';
-    ctx.fillStyle = 'rgba(255,255,200,0.9)';
-    if (!player.onGround) {
-      ctx.fillText('CLICK to SPIKE!', W / 2, H - 8);
-    } else {
-      ctx.fillText('Q = Set  |  CLICK = Bump', W / 2, H - 8);
+    // Tennis bounce indicator
+    if (activeTennisMode && ball.bounceCount === 1 && gameState === 'playing') {
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = '#ff6600';
+        ctx.fillText('BOUNCE 1', ball.x, ball.y - 25);
+        ctx.textAlign = 'left';
     }
-    ctx.textAlign = 'left';
-  }
+
+    // Round over message
+    if (gameState === 'roundOver') {
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 28px monospace';
+
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(W / 2 - 160, H / 2 - 70, 320, 65);
+
+        if (ball.x < NET_X) {
+            ctx.fillStyle = '#ff6666';
+            ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 38);
+        } else {
+            ctx.fillStyle = '#66ff66';
+            ctx.fillText('You Score!', W / 2, H / 2 - 38);
+        }
+        ctx.font = '13px monospace';
+        ctx.fillStyle = '#ddd';
+        ctx.fillText('next round starting...', W / 2, H / 2 - 16);
+        ctx.textAlign = 'left';
+    }
+
+    // Action hints
+    if (gameState === 'playing' && pDist < HIT_RANGE) {
+        ctx.textAlign = 'center';
+        ctx.font = '12px monospace';
+        ctx.fillStyle = 'rgba(255,255,200,0.9)';
+        if (!player.onGround) {
+            ctx.fillText(activeTennisMode ? 'CLICK to SMASH!' : 'CLICK to SPIKE!', W / 2, H - 8);
+        } else {
+            ctx.fillText(activeTennisMode ? 'CLICK = Hit' : 'Q = Set  |  CLICK = Bump', W / 2, H - 8);
+        }
+        ctx.textAlign = 'left';
+    }
 }
 
 // ==================== GAME LOOP ====================
@@ -1139,35 +1557,35 @@ let lastTime = 0;
 const TICK_RATE = 1000 / 60;
 
 function gameLoop(timestamp) {
-  if (timestamp - lastTime >= TICK_RATE) {
-    lastTime = timestamp;
+    if (timestamp - lastTime >= TICK_RATE) {
+        lastTime = timestamp;
 
-    if (gameState === 'playing' || gameState === 'roundOver') {
-      updatePlayer();
-      updateOpponent();
-      updateBall();
-      drawGame();
+        if (gameState === 'playing' || gameState === 'roundOver') {
+            updatePlayer();
+            updateOpponent();
+            updateBall();
+            drawGame();
 
-      if (gameMode === 'host') {
-        sendState();
-      } else if (gameMode === 'client') {
-        sendInput();
-      }
+            if (gameMode === 'host') {
+                sendState();
+            } else if (gameMode === 'client') {
+                sendInput();
+            }
 
-      if (gameState === 'roundOver') {
-        roundTimer--;
-        if (roundTimer <= 0) {
-          playSound('whistle');
-          resetRound();
+            if (gameState === 'roundOver') {
+                roundTimer--;
+                if (roundTimer <= 0) {
+                    playSound('whistle');
+                    resetRound();
+                }
+            }
         }
-      }
+
+        clickedThisFrame = false;
+        setPressed = false;
     }
 
-    clickedThisFrame = false;
-    setPressed = false;
-  }
-
-  requestAnimationFrame(gameLoop);
+    requestAnimationFrame(gameLoop);
 }
 
 document.getElementById('score').textContent = '0 - 0';
