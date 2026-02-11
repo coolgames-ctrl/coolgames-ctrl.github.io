@@ -20,8 +20,8 @@ body {
     overflow: hidden;
 }
 
-#menuScreen {
-    display: flex;
+.screen {
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -32,6 +32,8 @@ body {
     background: #fafafa;
 }
 
+#menuScreen { display: flex; }
+
 #menuTitle {
     font-size: 52px;
     font-weight: 700;
@@ -40,27 +42,96 @@ body {
     letter-spacing: -1px;
 }
 
-#startButton {
-    width: 180px;
-    height: 60px;
+.menu-button {
+    width: 220px;
+    height: 50px;
     background: #222;
     border: none;
-    border-radius: 16px;
+    border-radius: 12px;
     font-family: 'Courier Prime', monospace;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: #fff;
     cursor: pointer;
     transition: all 0.2s ease;
+    margin: 8px 0;
 }
 
-#startButton:hover {
+.menu-button:hover {
     background: #444;
     transform: scale(1.05);
 }
 
-#startButton:active {
+.menu-button:active {
     transform: scale(0.98);
+}
+
+.menu-button:disabled {
+    background: #999;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#lobbyTitle, #waitingTitle {
+    font-size: 28px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 30px;
+}
+
+#lobbyInput {
+    width: 250px;
+    height: 50px;
+    border: 2px solid #222;
+    border-radius: 12px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 18px;
+    padding: 0 15px;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+#lobbyInput:focus {
+    outline: none;
+    border-color: #3366ff;
+}
+
+#lobbyStatus, #waitingStatus {
+    color: #666;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+#lobbyCode {
+    font-size: 48px;
+    font-weight: 700;
+    color: #3366ff;
+    margin-bottom: 20px;
+    letter-spacing: 6px;
+    background: #eef4ff;
+    padding: 15px 30px;
+    border-radius: 12px;
+}
+
+.back-button {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    background: none;
+    border: 2px solid #222;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    background: #222;
+    color: #fff;
 }
 
 #gameContainer {
@@ -77,6 +148,12 @@ body {
     letter-spacing: 8px;
 }
 
+#mode-indicator {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
 canvas { 
     border: 2px solid #222;
     cursor: crosshair;
@@ -89,16 +166,47 @@ canvas {
     text-align: center;
     line-height: 1.8;
 }
+
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
 </style>
+<script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
 </head>
 <body>
 
-<div id="menuScreen">
+<div id="menuScreen" class="screen">
     <div id="menuTitle">Cool Games</div>
-    <button id="startButton">Start</button>
+    <button class="menu-button" id="createBtn">Create Lobby</button>
+    <button class="menu-button" id="joinBtn">Join Lobby</button>
+    <button class="menu-button" id="soloBtn">Play vs AI</button>
+</div>
+
+<div id="lobbyScreen" class="screen">
+    <button class="back-button" id="lobbyBackBtn">← Back</button>
+    <div id="lobbyTitle">Join Lobby</div>
+    <input type="text" id="lobbyInput" placeholder="ENTER CODE" maxlength="8">
+    <button class="menu-button" id="connectBtn">Connect</button>
+    <div id="lobbyStatus"></div>
+</div>
+
+<div id="waitingScreen" class="screen">
+    <button class="back-button" id="waitingBackBtn">← Back</button>
+    <div id="waitingTitle">Your Lobby Code</div>
+    <div id="lobbyCode">-----</div>
+    <div id="waitingStatus">Waiting for opponent<span class="loading-dots"></span></div>
 </div>
 
 <div id="gameContainer">
+    <div id="mode-indicator"></div>
     <div id="score">0 - 0</div>
     <canvas id="game" width="800" height="450"></canvas>
     <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike</div>
@@ -119,10 +227,17 @@ const BALL_GRAVITY = 0.20;
 const HIT_RANGE = 80;
 
 let playerScore = 0;
-let aiScore = 0;
+let opponentScore = 0;
 let serveSide = 'player';
 let gameState = 'menu';
 let roundTimer = 0;
+let gameMode = 'solo'; // 'solo', 'host', 'client'
+
+// Multiplayer
+let peer = null;
+let conn = null;
+let isHost = false;
+let lobbyCode = '';
 
 const keys = {};
 let clickedThisFrame = false;
@@ -170,16 +285,6 @@ function playSound(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
       osc.start(now);
       osc.stop(now + 0.18);
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(150, now);
-      gain2.gain.setValueAtTime(0.12, now);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      osc2.start(now);
-      osc2.stop(now + 0.1);
       break;
     case 'score':
       osc.type = 'sine';
@@ -231,6 +336,179 @@ function playSound(type) {
   }
 }
 
+// ==================== SCREENS ====================
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+  document.getElementById('gameContainer').style.display = 'none';
+  if (screenId === 'game') {
+    document.getElementById('gameContainer').style.display = 'flex';
+  } else {
+    document.getElementById(screenId).style.display = 'flex';
+  }
+}
+
+// ==================== MULTIPLAYER ====================
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 5; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function createLobby() {
+  lobbyCode = generateCode();
+  document.getElementById('lobbyCode').textContent = lobbyCode;
+  showScreen('waitingScreen');
+  
+  peer = new Peer('vball-' + lobbyCode);
+  
+  peer.on('open', (id) => {
+    console.log('Lobby created:', id);
+  });
+  
+  peer.on('connection', (connection) => {
+    conn = connection;
+    isHost = true;
+    gameMode = 'host';
+    setupConnection();
+  });
+  
+  peer.on('error', (err) => {
+    console.error('Peer error:', err);
+    document.getElementById('waitingStatus').textContent = 'Error: ' + err.type;
+  });
+}
+
+function joinLobby() {
+  const code = document.getElementById('lobbyInput').value.toUpperCase().trim();
+  if (code.length < 3) {
+    document.getElementById('lobbyStatus').textContent = 'Please enter a valid code';
+    return;
+  }
+  
+  document.getElementById('lobbyStatus').textContent = 'Connecting...';
+  document.getElementById('connectBtn').disabled = true;
+  
+  peer = new Peer();
+  
+  peer.on('open', () => {
+    conn = peer.connect('vball-' + code);
+    
+    conn.on('open', () => {
+      isHost = false;
+      gameMode = 'client';
+      setupConnection();
+    });
+    
+    conn.on('error', (err) => {
+      document.getElementById('lobbyStatus').textContent = 'Failed to connect';
+      document.getElementById('connectBtn').disabled = false;
+    });
+  });
+  
+  peer.on('error', (err) => {
+    document.getElementById('lobbyStatus').textContent = 'Lobby not found';
+    document.getElementById('connectBtn').disabled = false;
+  });
+  
+  setTimeout(() => {
+    if (!conn || !conn.open) {
+      document.getElementById('lobbyStatus').textContent = 'Connection timeout';
+      document.getElementById('connectBtn').disabled = false;
+    }
+  }, 10000);
+}
+
+function setupConnection() {
+  conn.on('data', (data) => {
+    handleNetworkData(data);
+  });
+  
+  conn.on('close', () => {
+    alert('Opponent disconnected');
+    location.reload();
+  });
+  
+  if (isHost) {
+    startMultiplayerGame();
+  }
+}
+
+function handleNetworkData(data) {
+  if (data.type === 'start') {
+    startMultiplayerGame();
+  } else if (data.type === 'state' && !isHost) {
+    // Client receives state from host
+    player.x = W - data.opponent.x - player.w;
+    player.y = data.opponent.y;
+    opponent.x = W - data.player.x - opponent.w;
+    opponent.y = data.player.y;
+    ball.x = W - data.ball.x;
+    ball.y = data.ball.y;
+    ball.vx = -data.ball.vx;
+    ball.vy = data.ball.vy;
+    playerScore = data.opponentScore;
+    opponentScore = data.playerScore;
+    gameState = data.gameState;
+    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+  } else if (data.type === 'input' && isHost) {
+    // Host receives input from client
+    remoteInput = data.input;
+  }
+}
+
+function sendState() {
+  if (conn && conn.open && isHost) {
+    conn.send({
+      type: 'state',
+      player: { x: player.x, y: player.y },
+      opponent: { x: opponent.x, y: opponent.y },
+      ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
+      playerScore: playerScore,
+      opponentScore: opponentScore,
+      gameState: gameState
+    });
+  }
+}
+
+function sendInput() {
+  if (conn && conn.open && !isHost) {
+    conn.send({
+      type: 'input',
+      input: {
+        left: keys['a'],
+        right: keys['d'],
+        jump: keys['w'] || keys[' '],
+        set: keys['q'],
+        click: clickedThisFrame
+      }
+    });
+  }
+}
+
+let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
+
+function startMultiplayerGame() {
+  if (isHost) {
+    conn.send({ type: 'start' });
+  }
+  document.getElementById('mode-indicator').textContent = isHost ? '🟢 Hosting' : '🔵 Connected';
+  initAudio();
+  playSound('whistle');
+  showScreen('game');
+  gameState = 'playing';
+  resetRound();
+}
+
+function cleanupPeer() {
+  if (conn) conn.close();
+  if (peer) peer.destroy();
+  conn = null;
+  peer = null;
+}
+
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
@@ -242,29 +520,62 @@ canvas.addEventListener('mousedown', e => {
   clickedThisFrame = true;
 });
 
-// Menu button handler
-const startButton = document.getElementById('startButton');
-startButton.addEventListener('click', () => {
+// Menu buttons
+document.getElementById('createBtn').addEventListener('click', () => {
   initAudio();
-  document.getElementById('menuScreen').style.display = 'none';
-  document.getElementById('gameContainer').style.display = 'flex';
-  gameState = 'playing';
+  createLobby();
+});
+
+document.getElementById('joinBtn').addEventListener('click', () => {
+  initAudio();
+  showScreen('lobbyScreen');
+});
+
+document.getElementById('soloBtn').addEventListener('click', () => {
+  initAudio();
+  gameMode = 'solo';
+  document.getElementById('mode-indicator').textContent = 'vs AI';
   playSound('whistle');
+  showScreen('game');
+  gameState = 'playing';
   resetRound();
+});
+
+document.getElementById('connectBtn').addEventListener('click', () => {
+  initAudio();
+  joinLobby();
+});
+
+document.getElementById('lobbyBackBtn').addEventListener('click', () => {
+  showScreen('menuScreen');
+});
+
+document.getElementById('waitingBackBtn').addEventListener('click', () => {
+  cleanupPeer();
+  showScreen('menuScreen');
+});
+
+document.getElementById('lobbyInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    initAudio();
+    joinLobby();
+  }
 });
 
 // ==================== ENTITIES ====================
 const player = {
   x: 150, y: GROUND_Y - 50, w: 50, h: 50,
-  vx: 0, vy: 0, speed: 3.2, jumpPower: -7.5,
+  vx: 0, vy: 0, speed: 3.5, jumpPower: -8,
   onGround: true, color: '#3366ff', facingRight: true
 };
 
-const ai = {
+const opponent = {
   x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
-  vx: 0, vy: 0, speed: 3.0, jumpPower: -7.5,
+  vx: 0, vy: 0, speed: 3.2, jumpPower: -8,
   onGround: true, color: '#ff4444',
-  actionCooldown: 0, hitCount: 0, phase: 'idle'
+  // AI specific
+  actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
+  personality: 0, lastDecision: 0, mistakeChance: 0
 };
 
 const ball = {
@@ -276,10 +587,11 @@ const ball = {
 // ==================== GAME LOGIC ====================
 function resetRound() {
   player.x = 150; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
-  ai.x = W - 200; ai.y = GROUND_Y - ai.h; ai.vx = 0; ai.vy = 0; ai.onGround = true;
-  ai.actionCooldown = 0;
-  ai.hitCount = 0;
-  ai.phase = 'idle';
+  opponent.x = W - 200; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
+  opponent.actionCooldown = 0;
+  opponent.hitCount = 0;
+  opponent.personality = Math.random();
+  opponent.mistakeChance = 0.08 + Math.random() * 0.07;
 
   ball.vy = 0;
   ball.vx = 0;
@@ -291,7 +603,7 @@ function resetRound() {
   }
   gameState = 'playing';
   roundTimer = 0;
-  document.getElementById('score').textContent = playerScore + ' - ' + aiScore;
+  document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -315,18 +627,18 @@ function capBallSpeed(maxSpd) {
 
 function doSet(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
-  ball.vx = 0;
-  ball.vy = -8.5;
-  ball.lastHitBy = rect === player ? 'player' : 'ai';
+  ball.vx = direction * 1.5;
+  ball.vy = -9;
+  ball.lastHitBy = rect === player ? 'player' : 'opponent';
   playSound('set');
   return true;
 }
 
 function doBump(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
-  ball.vx = direction * 7;
-  ball.vy = -7.5;
-  ball.lastHitBy = rect === player ? 'player' : 'ai';
+  ball.vx = direction * 6;
+  ball.vy = -7;
+  ball.lastHitBy = rect === player ? 'player' : 'opponent';
   capBallSpeed(11);
   playSound('bump');
   return true;
@@ -334,10 +646,15 @@ function doBump(rect, direction) {
 
 function doSpike(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
-  ball.vx = direction * 7;
-  ball.vy = 3.5;
-  ball.lastHitBy = rect === player ? 'player' : 'ai';
-  capBallSpeed(11);
+  // Calculate spike angle based on ball position relative to net
+  let distToNet = Math.abs(ball.x - NET_X);
+  let spikeVx = direction * (8 + Math.min(distToNet / 50, 3));
+  let spikeVy = 2 + (ball.y < NET_TOP ? 3 : 1);
+  
+  ball.vx = spikeVx;
+  ball.vy = spikeVy;
+  ball.lastHitBy = rect === player ? 'player' : 'opponent';
+  capBallSpeed(13);
   playSound('spike');
   return true;
 }
@@ -378,7 +695,7 @@ function updatePlayer() {
   }
 
   if (clickedThisFrame) {
-    if (!player.onGround) {
+    if (!player.onGround && ball.y < player.y + 20) {
       doSpike(player, 1);
     } else {
       doBump(player, 1);
@@ -397,109 +714,188 @@ function updatePlayer() {
   player.x = clamp(player.x, 0, NET_X - player.w - 5);
 }
 
-// ==================== AI ====================
+// ==================== OPPONENT (Remote or AI) ====================
+function updateOpponent() {
+  if (gameMode === 'host') {
+    // Use remote input
+    opponent.vx = 0;
+    if (remoteInput.left) opponent.vx = opponent.speed;
+    if (remoteInput.right) opponent.vx = -opponent.speed;
+    if (remoteInput.jump && opponent.onGround) {
+      opponent.vy = opponent.jumpPower;
+      opponent.onGround = false;
+    }
+    if (remoteInput.set) {
+      remoteInput.set = false;
+      doSet(opponent, -1);
+    }
+    if (remoteInput.click) {
+      remoteInput.click = false;
+      if (!opponent.onGround && ball.y < opponent.y + 20) {
+        doSpike(opponent, -1);
+      } else {
+        doBump(opponent, -1);
+      }
+    }
+  } else if (gameMode === 'solo') {
+    updateAI();
+  }
+  // Client doesn't update opponent locally (receives from host)
+
+  if (gameMode !== 'client') {
+    opponent.vy += GRAVITY;
+    opponent.x += opponent.vx;
+    opponent.y += opponent.vy;
+
+    if (opponent.y + opponent.h >= GROUND_Y) {
+      opponent.y = GROUND_Y - opponent.h;
+      opponent.vy = 0;
+      opponent.onGround = true;
+    }
+    opponent.x = clamp(opponent.x, NET_X + 5, W - opponent.w);
+  }
+}
+
 function updateAI() {
-  ai.actionCooldown = Math.max(0, ai.actionCooldown - 1);
+  opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
+  opponent.lastDecision++;
 
   let ballOnMySide = ball.x > NET_X;
-  let distToB = ballCenter(ai);
+  let distToB = ballCenter(opponent);
 
+  // Predict where ball will land
   let predictX = ball.x;
   let predictY = ball.y;
   let pvx = ball.vx;
   let pvy = ball.vy;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 80; i++) {
     pvy += BALL_GRAVITY;
     predictX += pvx;
     predictY += pvy;
-    if (predictY >= GROUND_Y) break;
+    if (predictY >= GROUND_Y - 20) break;
   }
 
-  let targetX;
-  if (ballOnMySide) {
-    if (ball.vy > 0 && ball.y > NET_TOP - 50) {
-      targetX = ball.x - ai.w / 2;
+  // Add some randomness to decision making
+  if (opponent.lastDecision > 30 + Math.random() * 20) {
+    opponent.lastDecision = 0;
+    
+    // Occasionally make mistakes
+    if (Math.random() < opponent.mistakeChance) {
+      opponent.targetX = opponent.x + (Math.random() - 0.5) * 100;
+    } else if (ballOnMySide) {
+      // Different strategies based on personality
+      if (opponent.personality < 0.3) {
+        // Aggressive - try to get under ball quickly
+        opponent.targetX = ball.x - opponent.w / 2 + (Math.random() - 0.5) * 30;
+      } else if (opponent.personality < 0.7) {
+        // Balanced - predict landing
+        opponent.targetX = predictX - opponent.w / 2 + (Math.random() - 0.5) * 20;
+      } else {
+        // Defensive - stay back more
+        opponent.targetX = Math.max(predictX - opponent.w / 2, W * 0.65);
+      }
     } else {
-      targetX = predictX - ai.w / 2;
+      // Return to ready position with some variation
+      opponent.targetX = W * (0.7 + opponent.personality * 0.1) - opponent.w / 2;
     }
-  } else {
-    targetX = W * 0.72 - ai.w / 2;
   }
 
-  targetX = clamp(targetX, NET_X + 5, W - ai.w);
+  opponent.targetX = clamp(opponent.targetX, NET_X + 10, W - opponent.w - 10);
 
-  let diff = targetX - ai.x;
-  if (Math.abs(diff) > 5) {
-    ai.vx = diff > 0 ? ai.speed : -ai.speed;
+  // Movement with slight delay/smoothing
+  let diff = opponent.targetX - opponent.x;
+  let moveThreshold = 8 + Math.random() * 5;
+  
+  if (Math.abs(diff) > moveThreshold) {
+    let speedMod = 0.85 + Math.random() * 0.3;
+    opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * speedMod;
   } else {
-    ai.vx = 0;
+    opponent.vx = 0;
   }
 
-  if (ballOnMySide && ai.actionCooldown <= 0) {
+  // Action logic
+  if (ballOnMySide && opponent.actionCooldown <= 0) {
     let ballComingDown = ball.vy > 0;
-    let ballNear = distToB < HIT_RANGE + 15;
-    let ballAbove = ball.y < ai.y;
+    let ballNear = distToB < HIT_RANGE + 20;
+    let ballAbove = ball.y < opponent.y;
+    let ballHigh = ball.y < NET_TOP - 20;
 
-    if (ballAbove && ballComingDown && distToB < 140 && ai.onGround) {
-      if (ball.y < NET_TOP + 60) {
-        ai.vy = ai.jumpPower;
-        ai.onGround = false;
+    // Jump decision
+    if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
+      let shouldJump = ball.y < NET_TOP + 80;
+      // Add timing variation
+      if (shouldJump && Math.random() > 0.15) {
+        let jumpDelay = Math.floor(Math.random() * 8);
+        setTimeout(() => {
+          if (opponent.onGround) {
+            opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
+            opponent.onGround = false;
+          }
+        }, jumpDelay * 16);
       }
     }
 
-    if (ballNear && ballAbove) {
-      if (ai.hitCount === 0 && ballComingDown) {
-        if (doSet(ai, -1)) {
-          ai.actionCooldown = 15;
-          ai.hitCount = 1;
-        }
-      } else if (ai.hitCount >= 1) {
-        if (!ai.onGround && ball.y < NET_TOP + 40) {
-          if (doSpike(ai, -1)) {
-            ai.actionCooldown = 25;
-            ai.hitCount = 0;
-          }
-        } else {
-          if (doBump(ai, -1)) {
-            ai.actionCooldown = 25;
-            ai.hitCount = 0;
+    // Hit decisions
+    if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
+      let actionDelay = Math.floor(Math.random() * 5);
+      
+      setTimeout(() => {
+        if (opponent.actionCooldown > 0) return;
+        
+        // Spike opportunity
+        if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
+          if (Math.random() > 0.2) {
+            if (doSpike(opponent, -1)) {
+              opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+              opponent.hitCount = 0;
+            }
           }
         }
-      }
+        // First touch - set up
+        else if (opponent.hitCount === 0 && ballComingDown) {
+          if (Math.random() > 0.3) {
+            if (doSet(opponent, -1)) {
+              opponent.actionCooldown = 12 + Math.floor(Math.random() * 8);
+              opponent.hitCount = 1;
+            }
+          }
+        }
+        // Second touch - send over
+        else if (opponent.hitCount >= 1) {
+          if (doBump(opponent, -1)) {
+            opponent.actionCooldown = 18 + Math.floor(Math.random() * 12);
+            opponent.hitCount = 0;
+          }
+        }
+      }, actionDelay * 16);
     }
 
-    if (ballNear && ballComingDown && ai.actionCooldown <= 0 && ball.y > NET_TOP) {
-      if (doBump(ai, -1)) {
-        ai.actionCooldown = 25;
-        ai.hitCount = 0;
+    // Emergency hit - ball getting low
+    if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
+      if (doBump(opponent, -1)) {
+        opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+        opponent.hitCount = 0;
       }
     }
   }
 
+  // Reset hit count when ball goes to other side
   if (!ballOnMySide) {
-    ai.hitCount = 0;
+    opponent.hitCount = 0;
   }
-
-  ai.vy += GRAVITY;
-  ai.x += ai.vx;
-  ai.y += ai.vy;
-
-  if (ai.y + ai.h >= GROUND_Y) {
-    ai.y = GROUND_Y - ai.h;
-    ai.vy = 0;
-    ai.onGround = true;
-  }
-  ai.x = clamp(ai.x, NET_X + 5, W - ai.w);
 }
 
 // ==================== BALL ====================
 function updateBall() {
+  if (gameMode === 'client') return; // Client receives ball state from host
+
   ball.vy += BALL_GRAVITY;
   ball.x += ball.vx;
   ball.y += ball.vy;
 
-  capBallSpeed(11);
+  capBallSpeed(13);
 
+  // Walls
   if (ball.x - ball.r < 0) {
     ball.x = ball.r;
     ball.vx = Math.abs(ball.vx) * 0.7;
@@ -516,6 +912,7 @@ function updateBall() {
     playSound('bounce');
   }
 
+  // Net collision
   let hitNet = false;
   if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
     if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
@@ -536,31 +933,33 @@ function updateBall() {
   }
   if (hitNet) playSound('net');
 
+  // Collision with players
   if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
     pushBallOutOfRect(player);
     ball.vy = Math.min(ball.vy, -2);
     playSound('bounce');
   }
-  if (rectCircleCollision(ai.x, ai.y, ai.w, ai.h, ball.x, ball.y, ball.r)) {
-    pushBallOutOfRect(ai);
+  if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
+    pushBallOutOfRect(opponent);
     ball.vy = Math.min(ball.vy, -2);
     playSound('bounce');
   }
 
+  // Ball hits ground - SCORE
   if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
     gameState = 'roundOver';
     roundTimer = 90;
 
     if (ball.x < NET_X) {
-      aiScore++;
+      opponentScore++;
       serveSide = 'player';
       playSound('lose');
     } else {
       playerScore++;
-      serveSide = 'ai';
+      serveSide = 'opponent';
       playSound('score');
     }
-    document.getElementById('score').textContent = playerScore + ' - ' + aiScore;
+    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
     ball.vy = 0;
     ball.vx = 0;
     ball.y = GROUND_Y - ball.r;
@@ -625,24 +1024,22 @@ function drawGame() {
   // Player (cube)
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.w, player.h);
-  // Eye white
   ctx.fillStyle = '#fff';
   ctx.fillRect(player.x + 30, player.y + 12, 12, 12);
-  // Eye pupil
   ctx.fillStyle = '#000';
   ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
 
-  // AI shadow
+  // Opponent shadow
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(ai.x + 5, GROUND_Y - 3, ai.w - 10, 6);
+  ctx.fillRect(opponent.x + 5, GROUND_Y - 3, opponent.w - 10, 6);
 
-  // AI (cube)
-  ctx.fillStyle = ai.color;
-  ctx.fillRect(ai.x, ai.y, ai.w, ai.h);
+  // Opponent (cube)
+  ctx.fillStyle = opponent.color;
+  ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
   ctx.fillStyle = '#fff';
-  ctx.fillRect(ai.x + 8, ai.y + 12, 12, 12);
+  ctx.fillRect(opponent.x + 8, opponent.y + 12, 12, 12);
   ctx.fillStyle = '#000';
-  ctx.fillRect(ai.x + 10, ai.y + 16, 4, 4);
+  ctx.fillRect(opponent.x + 10, opponent.y + 16, 4, 4);
 
   // Ball shadow
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
@@ -658,7 +1055,6 @@ function drawGame() {
   ctx.strokeStyle = '#999';
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  // Ball seam
   ctx.beginPath();
   ctx.moveTo(ball.x - 7, ball.y);
   ctx.quadraticCurveTo(ball.x, ball.y + 7, ball.x + 7, ball.y);
@@ -671,9 +1067,10 @@ function drawGame() {
   ctx.fillStyle = '#fff';
   ctx.fillText('YOU', player.x + 8, player.y - 8);
   ctx.fillStyle = '#fcc';
-  ctx.fillText('AI', ai.x + 16, ai.y - 8);
+  let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
+  ctx.fillText(oppLabel, opponent.x + 14, opponent.y - 8);
 
-  // Round over
+  // Round over message
   if (gameState === 'roundOver') {
     ctx.textAlign = 'center';
     ctx.font = 'bold 28px monospace';
@@ -683,7 +1080,7 @@ function drawGame() {
 
     if (ball.x < NET_X) {
       ctx.fillStyle = '#ff6666';
-      ctx.fillText('AI Scores!', W / 2, H / 2 - 38);
+      ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 38);
     } else {
       ctx.fillStyle = '#66ff66';
       ctx.fillText('You Score!', W / 2, H / 2 - 38);
@@ -709,31 +1106,43 @@ function drawGame() {
 }
 
 // ==================== GAME LOOP ====================
-function gameLoop() {
-  if (gameState === 'menu') {
-    // Menu handled by HTML/CSS
-  } else if (gameState === 'roundOver') {
-    updatePlayer();
-    updateBall();
-    drawGame();
-    roundTimer--;
-    if (roundTimer <= 0) {
-      playSound('whistle');
-      resetRound();
+let lastTime = 0;
+const TICK_RATE = 1000 / 60;
+
+function gameLoop(timestamp) {
+  if (timestamp - lastTime >= TICK_RATE) {
+    lastTime = timestamp;
+
+    if (gameState === 'playing' || gameState === 'roundOver') {
+      updatePlayer();
+      updateOpponent();
+      updateBall();
+      drawGame();
+
+      // Send state/input for multiplayer
+      if (gameMode === 'host') {
+        sendState();
+      } else if (gameMode === 'client') {
+        sendInput();
+      }
+
+      if (gameState === 'roundOver') {
+        roundTimer--;
+        if (roundTimer <= 0) {
+          playSound('whistle');
+          resetRound();
+        }
+      }
     }
-  } else if (gameState === 'playing') {
-    updatePlayer();
-    updateAI();
-    updateBall();
-    drawGame();
+
+    clickedThisFrame = false;
   }
 
-  clickedThisFrame = false;
   requestAnimationFrame(gameLoop);
 }
 
 document.getElementById('score').textContent = '0 - 0';
-gameLoop();
+requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
