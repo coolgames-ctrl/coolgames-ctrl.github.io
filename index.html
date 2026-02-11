@@ -90,6 +90,7 @@ body {
     margin-bottom: 20px;
     text-align: center;
     text-transform: uppercase;
+    background: #fff;
 }
 
 #lobbyInput:focus {
@@ -178,6 +179,14 @@ canvas {
     60% { content: '..'; }
     80%, 100% { content: '...'; }
 }
+
+.error-text {
+    color: #cc3333;
+}
+
+.success-text {
+    color: #33aa33;
+}
 </style>
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
 </head>
@@ -193,7 +202,7 @@ canvas {
 <div id="lobbyScreen" class="screen">
     <button class="back-button" id="lobbyBackBtn">← Back</button>
     <div id="lobbyTitle">Join Lobby</div>
-    <input type="text" id="lobbyInput" placeholder="ENTER CODE" maxlength="8">
+    <input type="text" id="lobbyInput" placeholder="ENTER CODE" maxlength="8" autocomplete="off" spellcheck="false">
     <button class="menu-button" id="connectBtn">Connect</button>
     <div id="lobbyStatus"></div>
 </div>
@@ -360,6 +369,7 @@ function generateCode() {
 function createLobby() {
   lobbyCode = generateCode();
   document.getElementById('lobbyCode').textContent = lobbyCode;
+  document.getElementById('waitingStatus').innerHTML = 'Waiting for opponent<span class="loading-dots"></span>';
   showScreen('waitingScreen');
   
   peer = new Peer('vball-' + lobbyCode);
@@ -377,24 +387,32 @@ function createLobby() {
   
   peer.on('error', (err) => {
     console.error('Peer error:', err);
-    document.getElementById('waitingStatus').textContent = 'Error: ' + err.type;
+    if (err.type === 'unavailable-id') {
+      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, try again</span>';
+      setTimeout(() => {
+        cleanupPeer();
+        createLobby();
+      }, 1000);
+    } else {
+      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Error: ' + err.type + '</span>';
+    }
   });
 }
 
 function joinLobby() {
   const code = document.getElementById('lobbyInput').value.toUpperCase().trim();
   if (code.length < 3) {
-    document.getElementById('lobbyStatus').textContent = 'Please enter a valid code';
+    document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Please enter a valid code</span>';
     return;
   }
   
-  document.getElementById('lobbyStatus').textContent = 'Connecting...';
+  document.getElementById('lobbyStatus').innerHTML = 'Connecting<span class="loading-dots"></span>';
   document.getElementById('connectBtn').disabled = true;
   
   peer = new Peer();
   
   peer.on('open', () => {
-    conn = peer.connect('vball-' + code);
+    conn = peer.connect('vball-' + code, { reliable: true });
     
     conn.on('open', () => {
       isHost = false;
@@ -403,19 +421,20 @@ function joinLobby() {
     });
     
     conn.on('error', (err) => {
-      document.getElementById('lobbyStatus').textContent = 'Failed to connect';
+      document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
       document.getElementById('connectBtn').disabled = false;
     });
   });
   
   peer.on('error', (err) => {
-    document.getElementById('lobbyStatus').textContent = 'Lobby not found';
+    console.error('Peer error:', err);
+    document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Lobby not found</span>';
     document.getElementById('connectBtn').disabled = false;
   });
   
   setTimeout(() => {
     if (!conn || !conn.open) {
-      document.getElementById('lobbyStatus').textContent = 'Connection timeout';
+      document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection timeout</span>';
       document.getElementById('connectBtn').disabled = false;
     }
   }, 10000);
@@ -456,6 +475,8 @@ function handleNetworkData(data) {
   } else if (data.type === 'input' && isHost) {
     // Host receives input from client
     remoteInput = data.input;
+  } else if (data.type === 'sound') {
+    playSound(data.sound);
   }
 }
 
@@ -481,13 +502,14 @@ function sendInput() {
         left: keys['a'],
         right: keys['d'],
         jump: keys['w'] || keys[' '],
-        set: keys['q'],
+        set: setPressed,
         click: clickedThisFrame
       }
     });
   }
 }
 
+let setPressed = false;
 let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
 
 function startMultiplayerGame() {
@@ -511,10 +533,27 @@ function cleanupPeer() {
 
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
+  // Don't block input when typing in text fields
+  if (document.activeElement.tagName === 'INPUT') {
+    return;
+  }
+  
   keys[e.key.toLowerCase()] = true;
-  e.preventDefault();
+  
+  if (e.key.toLowerCase() === 'q') {
+    setPressed = true;
+  }
+  
+  // Only prevent default for game keys when game is active
+  if (gameState === 'playing' || gameState === 'roundOver') {
+    e.preventDefault();
+  }
 });
-document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+document.addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
 canvas.addEventListener('mousedown', e => {
   initAudio();
   clickedThisFrame = true;
@@ -528,7 +567,13 @@ document.getElementById('createBtn').addEventListener('click', () => {
 
 document.getElementById('joinBtn').addEventListener('click', () => {
   initAudio();
+  document.getElementById('lobbyStatus').textContent = '';
+  document.getElementById('lobbyInput').value = '';
+  document.getElementById('connectBtn').disabled = false;
   showScreen('lobbyScreen');
+  setTimeout(() => {
+    document.getElementById('lobbyInput').focus();
+  }, 100);
 });
 
 document.getElementById('soloBtn').addEventListener('click', () => {
@@ -547,6 +592,7 @@ document.getElementById('connectBtn').addEventListener('click', () => {
 });
 
 document.getElementById('lobbyBackBtn').addEventListener('click', () => {
+  cleanupPeer();
   showScreen('menuScreen');
 });
 
@@ -631,6 +677,7 @@ function doSet(rect, direction) {
   ball.vy = -9;
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   playSound('set');
+  if (conn && conn.open) conn.send({ type: 'sound', sound: 'set' });
   return true;
 }
 
@@ -641,12 +688,12 @@ function doBump(rect, direction) {
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   capBallSpeed(11);
   playSound('bump');
+  if (conn && conn.open) conn.send({ type: 'sound', sound: 'bump' });
   return true;
 }
 
 function doSpike(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
-  // Calculate spike angle based on ball position relative to net
   let distToNet = Math.abs(ball.x - NET_X);
   let spikeVx = direction * (8 + Math.min(distToNet / 50, 3));
   let spikeVy = 2 + (ball.y < NET_TOP ? 3 : 1);
@@ -656,6 +703,7 @@ function doSpike(rect, direction) {
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   capBallSpeed(13);
   playSound('spike');
+  if (conn && conn.open) conn.send({ type: 'sound', sound: 'spike' });
   return true;
 }
 
@@ -689,8 +737,8 @@ function updatePlayer() {
     player.onGround = false;
   }
 
-  if (keys['q']) {
-    keys['q'] = false;
+  if (setPressed) {
+    setPressed = false;
     doSet(player, 1);
   }
 
@@ -740,7 +788,6 @@ function updateOpponent() {
   } else if (gameMode === 'solo') {
     updateAI();
   }
-  // Client doesn't update opponent locally (receives from host)
 
   if (gameMode !== 'client') {
     opponent.vy += GRAVITY;
@@ -775,34 +822,27 @@ function updateAI() {
     if (predictY >= GROUND_Y - 20) break;
   }
 
-  // Add some randomness to decision making
+  // Decision making with variation
   if (opponent.lastDecision > 30 + Math.random() * 20) {
     opponent.lastDecision = 0;
     
-    // Occasionally make mistakes
     if (Math.random() < opponent.mistakeChance) {
       opponent.targetX = opponent.x + (Math.random() - 0.5) * 100;
     } else if (ballOnMySide) {
-      // Different strategies based on personality
       if (opponent.personality < 0.3) {
-        // Aggressive - try to get under ball quickly
         opponent.targetX = ball.x - opponent.w / 2 + (Math.random() - 0.5) * 30;
       } else if (opponent.personality < 0.7) {
-        // Balanced - predict landing
         opponent.targetX = predictX - opponent.w / 2 + (Math.random() - 0.5) * 20;
       } else {
-        // Defensive - stay back more
         opponent.targetX = Math.max(predictX - opponent.w / 2, W * 0.65);
       }
     } else {
-      // Return to ready position with some variation
       opponent.targetX = W * (0.7 + opponent.personality * 0.1) - opponent.w / 2;
     }
   }
 
   opponent.targetX = clamp(opponent.targetX, NET_X + 10, W - opponent.w - 10);
 
-  // Movement with slight delay/smoothing
   let diff = opponent.targetX - opponent.x;
   let moveThreshold = 8 + Math.random() * 5;
   
@@ -823,7 +863,6 @@ function updateAI() {
     // Jump decision
     if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
       let shouldJump = ball.y < NET_TOP + 80;
-      // Add timing variation
       if (shouldJump && Math.random() > 0.15) {
         let jumpDelay = Math.floor(Math.random() * 8);
         setTimeout(() => {
@@ -842,7 +881,6 @@ function updateAI() {
       setTimeout(() => {
         if (opponent.actionCooldown > 0) return;
         
-        // Spike opportunity
         if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
           if (Math.random() > 0.2) {
             if (doSpike(opponent, -1)) {
@@ -851,7 +889,6 @@ function updateAI() {
             }
           }
         }
-        // First touch - set up
         else if (opponent.hitCount === 0 && ballComingDown) {
           if (Math.random() > 0.3) {
             if (doSet(opponent, -1)) {
@@ -860,7 +897,6 @@ function updateAI() {
             }
           }
         }
-        // Second touch - send over
         else if (opponent.hitCount >= 1) {
           if (doBump(opponent, -1)) {
             opponent.actionCooldown = 18 + Math.floor(Math.random() * 12);
@@ -870,7 +906,7 @@ function updateAI() {
       }, actionDelay * 16);
     }
 
-    // Emergency hit - ball getting low
+    // Emergency hit
     if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
       if (doBump(opponent, -1)) {
         opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
@@ -879,7 +915,6 @@ function updateAI() {
     }
   }
 
-  // Reset hit count when ball goes to other side
   if (!ballOnMySide) {
     opponent.hitCount = 0;
   }
@@ -887,7 +922,7 @@ function updateAI() {
 
 // ==================== BALL ====================
 function updateBall() {
-  if (gameMode === 'client') return; // Client receives ball state from host
+  if (gameMode === 'client') return;
 
   ball.vy += BALL_GRAVITY;
   ball.x += ball.vx;
@@ -1136,6 +1171,7 @@ function gameLoop(timestamp) {
     }
 
     clickedThisFrame = false;
+    setPressed = false;
   }
 
   requestAnimationFrame(gameLoop);
