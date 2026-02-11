@@ -240,7 +240,7 @@ let opponentScore = 0;
 let serveSide = 'player';
 let gameState = 'menu';
 let roundTimer = 0;
-let gameMode = 'solo'; // 'solo', 'host', 'client'
+let gameMode = 'solo';
 
 // Multiplayer
 let peer = null;
@@ -250,6 +250,8 @@ let lobbyCode = '';
 
 const keys = {};
 let clickedThisFrame = false;
+let setPressed = false;
+let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
 
 // ==================== SOUND EFFECTS ====================
 let audioCtx = null;
@@ -382,13 +384,21 @@ function createLobby() {
     conn = connection;
     isHost = true;
     gameMode = 'host';
-    setupConnection();
+    
+    conn.on('open', () => {
+      console.log('Host: connection opened');
+      setupConnectionHandlers();
+    });
+    
+    conn.on('data', (data) => {
+      handleNetworkData(data);
+    });
   });
   
   peer.on('error', (err) => {
     console.error('Peer error:', err);
     if (err.type === 'unavailable-id') {
-      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, try again</span>';
+      document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, retrying...</span>';
       setTimeout(() => {
         cleanupPeer();
         createLobby();
@@ -412,15 +422,26 @@ function joinLobby() {
   peer = new Peer();
   
   peer.on('open', () => {
+    console.log('Client peer opened, connecting to host...');
     conn = peer.connect('vball-' + code, { reliable: true });
     
     conn.on('open', () => {
+      console.log('Client: connection opened');
       isHost = false;
       gameMode = 'client';
-      setupConnection();
+      setupConnectionHandlers();
+      
+      // Tell host we're ready
+      console.log('Client: sending ready signal');
+      conn.send({ type: 'ready' });
+    });
+    
+    conn.on('data', (data) => {
+      handleNetworkData(data);
     });
     
     conn.on('error', (err) => {
+      console.error('Connection error:', err);
       document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
       document.getElementById('connectBtn').disabled = false;
     });
@@ -440,23 +461,23 @@ function joinLobby() {
   }, 10000);
 }
 
-function setupConnection() {
-  conn.on('data', (data) => {
-    handleNetworkData(data);
-  });
-  
+function setupConnectionHandlers() {
   conn.on('close', () => {
     alert('Opponent disconnected');
     location.reload();
   });
-  
-  if (isHost) {
-    startMultiplayerGame();
-  }
 }
 
 function handleNetworkData(data) {
-  if (data.type === 'start') {
+  console.log('Received:', data.type);
+  
+  if (data.type === 'ready' && isHost) {
+    // Client is ready, start the game
+    console.log('Host: client is ready, starting game');
+    startMultiplayerGame();
+  } else if (data.type === 'start' && !isHost) {
+    // Host says start
+    console.log('Client: received start signal');
     startMultiplayerGame();
   } else if (data.type === 'state' && !isHost) {
     // Client receives state from host
@@ -509,11 +530,9 @@ function sendInput() {
   }
 }
 
-let setPressed = false;
-let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
-
 function startMultiplayerGame() {
   if (isHost) {
+    // Send start signal to client
     conn.send({ type: 'start' });
   }
   document.getElementById('mode-indicator').textContent = isHost ? '🟢 Hosting' : '🔵 Connected';
@@ -521,6 +540,8 @@ function startMultiplayerGame() {
   playSound('whistle');
   showScreen('game');
   gameState = 'playing';
+  playerScore = 0;
+  opponentScore = 0;
   resetRound();
 }
 
@@ -533,7 +554,6 @@ function cleanupPeer() {
 
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
-  // Don't block input when typing in text fields
   if (document.activeElement.tagName === 'INPUT') {
     return;
   }
@@ -544,7 +564,6 @@ document.addEventListener('keydown', e => {
     setPressed = true;
   }
   
-  // Only prevent default for game keys when game is active
   if (gameState === 'playing' || gameState === 'roundOver') {
     e.preventDefault();
   }
@@ -583,6 +602,8 @@ document.getElementById('soloBtn').addEventListener('click', () => {
   playSound('whistle');
   showScreen('game');
   gameState = 'playing';
+  playerScore = 0;
+  opponentScore = 0;
   resetRound();
 });
 
@@ -619,7 +640,6 @@ const opponent = {
   x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
   vx: 0, vy: 0, speed: 3.2, jumpPower: -8,
   onGround: true, color: '#ff4444',
-  // AI specific
   actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
   personality: 0, lastDecision: 0, mistakeChance: 0
 };
@@ -677,7 +697,7 @@ function doSet(rect, direction) {
   ball.vy = -9;
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   playSound('set');
-  if (conn && conn.open) conn.send({ type: 'sound', sound: 'set' });
+  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'set' });
   return true;
 }
 
@@ -688,7 +708,7 @@ function doBump(rect, direction) {
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   capBallSpeed(11);
   playSound('bump');
-  if (conn && conn.open) conn.send({ type: 'sound', sound: 'bump' });
+  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'bump' });
   return true;
 }
 
@@ -703,7 +723,7 @@ function doSpike(rect, direction) {
   ball.lastHitBy = rect === player ? 'player' : 'opponent';
   capBallSpeed(13);
   playSound('spike');
-  if (conn && conn.open) conn.send({ type: 'sound', sound: 'spike' });
+  if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'spike' });
   return true;
 }
 
@@ -762,10 +782,9 @@ function updatePlayer() {
   player.x = clamp(player.x, 0, NET_X - player.w - 5);
 }
 
-// ==================== OPPONENT (Remote or AI) ====================
+// ==================== OPPONENT ====================
 function updateOpponent() {
   if (gameMode === 'host') {
-    // Use remote input
     opponent.vx = 0;
     if (remoteInput.left) opponent.vx = opponent.speed;
     if (remoteInput.right) opponent.vx = -opponent.speed;
@@ -810,7 +829,6 @@ function updateAI() {
   let ballOnMySide = ball.x > NET_X;
   let distToB = ballCenter(opponent);
 
-  // Predict where ball will land
   let predictX = ball.x;
   let predictY = ball.y;
   let pvx = ball.vx;
@@ -822,7 +840,6 @@ function updateAI() {
     if (predictY >= GROUND_Y - 20) break;
   }
 
-  // Decision making with variation
   if (opponent.lastDecision > 30 + Math.random() * 20) {
     opponent.lastDecision = 0;
     
@@ -853,14 +870,12 @@ function updateAI() {
     opponent.vx = 0;
   }
 
-  // Action logic
   if (ballOnMySide && opponent.actionCooldown <= 0) {
     let ballComingDown = ball.vy > 0;
     let ballNear = distToB < HIT_RANGE + 20;
     let ballAbove = ball.y < opponent.y;
     let ballHigh = ball.y < NET_TOP - 20;
 
-    // Jump decision
     if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
       let shouldJump = ball.y < NET_TOP + 80;
       if (shouldJump && Math.random() > 0.15) {
@@ -874,7 +889,6 @@ function updateAI() {
       }
     }
 
-    // Hit decisions
     if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
       let actionDelay = Math.floor(Math.random() * 5);
       
@@ -906,7 +920,6 @@ function updateAI() {
       }, actionDelay * 16);
     }
 
-    // Emergency hit
     if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
       if (doBump(opponent, -1)) {
         opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
@@ -930,7 +943,6 @@ function updateBall() {
 
   capBallSpeed(13);
 
-  // Walls
   if (ball.x - ball.r < 0) {
     ball.x = ball.r;
     ball.vx = Math.abs(ball.vx) * 0.7;
@@ -947,7 +959,6 @@ function updateBall() {
     playSound('bounce');
   }
 
-  // Net collision
   let hitNet = false;
   if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
     if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
@@ -968,7 +979,6 @@ function updateBall() {
   }
   if (hitNet) playSound('net');
 
-  // Collision with players
   if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
     pushBallOutOfRect(player);
     ball.vy = Math.min(ball.vy, -2);
@@ -980,7 +990,6 @@ function updateBall() {
     playSound('bounce');
   }
 
-  // Ball hits ground - SCORE
   if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
     gameState = 'roundOver';
     roundTimer = 90;
@@ -1003,18 +1012,15 @@ function updateBall() {
 
 // ==================== DRAWING ====================
 function drawGame() {
-  // Sky
   let grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, '#87CEEB');
   grad.addColorStop(1, '#d4eef7');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  // Ground
   ctx.fillStyle = '#5a8f3c';
   ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-  // Court line
   ctx.strokeStyle = 'rgba(255,255,255,0.3)';
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 6]);
@@ -1024,13 +1030,11 @@ function drawGame() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Net
   ctx.fillStyle = '#333';
   ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
   ctx.fillStyle = '#fff';
   ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
   
-  // Net lines
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 1;
   for (let ny = NET_TOP + 15; ny < GROUND_Y; ny += 15) {
@@ -1040,7 +1044,6 @@ function drawGame() {
     ctx.stroke();
   }
 
-  // Hit range indicator
   let pDist = ballCenter(player);
   if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
     ctx.beginPath();
@@ -1052,11 +1055,9 @@ function drawGame() {
     ctx.setLineDash([]);
   }
 
-  // Player shadow
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
   ctx.fillRect(player.x + 5, GROUND_Y - 3, player.w - 10, 6);
 
-  // Player (cube)
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.w, player.h);
   ctx.fillStyle = '#fff';
@@ -1064,11 +1065,9 @@ function drawGame() {
   ctx.fillStyle = '#000';
   ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
 
-  // Opponent shadow
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
   ctx.fillRect(opponent.x + 5, GROUND_Y - 3, opponent.w - 10, 6);
 
-  // Opponent (cube)
   ctx.fillStyle = opponent.color;
   ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
   ctx.fillStyle = '#fff';
@@ -1076,13 +1075,11 @@ function drawGame() {
   ctx.fillStyle = '#000';
   ctx.fillRect(opponent.x + 10, opponent.y + 16, 4, 4);
 
-  // Ball shadow
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   ctx.beginPath();
   ctx.ellipse(ball.x, GROUND_Y, ball.r * 0.8, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ball
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
   ctx.fillStyle = ball.color;
@@ -1097,7 +1094,6 @@ function drawGame() {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Labels
   ctx.font = '13px monospace';
   ctx.fillStyle = '#fff';
   ctx.fillText('YOU', player.x + 8, player.y - 8);
@@ -1105,7 +1101,6 @@ function drawGame() {
   let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
   ctx.fillText(oppLabel, opponent.x + 14, opponent.y - 8);
 
-  // Round over message
   if (gameState === 'roundOver') {
     ctx.textAlign = 'center';
     ctx.font = 'bold 28px monospace';
@@ -1126,7 +1121,6 @@ function drawGame() {
     ctx.textAlign = 'left';
   }
 
-  // Action hints
   if (gameState === 'playing' && pDist < HIT_RANGE) {
     ctx.textAlign = 'center';
     ctx.font = '12px monospace';
@@ -1154,7 +1148,6 @@ function gameLoop(timestamp) {
       updateBall();
       drawGame();
 
-      // Send state/input for multiplayer
       if (gameMode === 'host') {
         sendState();
       } else if (gameMode === 'client') {
