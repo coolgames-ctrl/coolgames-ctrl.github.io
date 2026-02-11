@@ -181,14 +181,8 @@ body {
     width: 320px;
 }
 
-.radio-option:hover {
-    border-color: #999;
-}
-
-.radio-option.selected {
-    border-color: #4CAF50;
-    background: #e8f5e9;
-}
+.radio-option:hover { border-color: #999; }
+.radio-option.selected { border-color: #4CAF50; background: #e8f5e9; }
 
 .radio-circle {
     width: 20px;
@@ -200,10 +194,7 @@ body {
     justify-content: center;
 }
 
-.radio-option.selected .radio-circle {
-    border-color: #4CAF50;
-}
-
+.radio-option.selected .radio-circle { border-color: #4CAF50; }
 .radio-circle::after {
     content: '';
     width: 10px;
@@ -212,25 +203,11 @@ body {
     border-radius: 50%;
     display: none;
 }
+.radio-option.selected .radio-circle::after { display: block; }
 
-.radio-option.selected .radio-circle::after {
-    display: block;
-}
-
-.radio-text {
-    flex: 1;
-}
-
-.radio-title {
-    font-weight: 700;
-    font-size: 14px;
-}
-
-.radio-desc {
-    font-size: 11px;
-    color: #666;
-    margin-top: 2px;
-}
+.radio-text { flex: 1; }
+.radio-title { font-weight: 700; font-size: 14px; }
+.radio-desc { font-size: 11px; color: #666; margin-top: 2px; }
 
 #gameContainer {
     display: none;
@@ -261,10 +238,7 @@ body {
     letter-spacing: 8px;
 }
 
-#mode-indicator {
-    font-size: 14px;
-    color: #666;
-}
+#mode-indicator { font-size: 14px; color: #666; }
 
 #touchIndicator {
     font-size: 14px;
@@ -275,10 +249,7 @@ body {
     border: 1px solid #ddd;
 }
 
-.game-wrapper {
-    display: flex;
-    gap: 15px;
-}
+.game-wrapper { display: flex; gap: 15px; }
 
 canvas { 
     border: 2px solid #222;
@@ -322,67 +293,18 @@ canvas {
     word-wrap: break-word;
 }
 
-.chat-message.you {
-    background: #e3f2fd;
-    align-self: flex-end;
-    max-width: 85%;
-}
+.chat-message.you { background: #e3f2fd; align-self: flex-end; max-width: 85%; }
+.chat-message.opponent { background: #ffebee; align-self: flex-start; max-width: 85%; }
+.chat-message.system { background: #f5f5f5; align-self: center; color: #666; font-style: italic; text-align: center; }
 
-.chat-message.opponent {
-    background: #ffebee;
-    align-self: flex-start;
-    max-width: 85%;
-}
+#chatInputWrapper { display: flex; border-top: 2px solid #222; }
+#chatInput { flex: 1; border: none; padding: 10px; font-family: 'Courier Prime', monospace; font-size: 12px; outline: none; }
+#chatSend { background: #222; color: #fff; border: none; padding: 10px 15px; cursor: pointer; font-weight: 700; }
+#chatSend:hover { background: #444; }
 
-.chat-message.system {
-    background: #f5f5f5;
-    align-self: center;
-    color: #666;
-    font-style: italic;
-    text-align: center;
-}
+#info { color: #666; margin-top: 12px; font-size: 13px; text-align: center; line-height: 1.8; }
 
-#chatInputWrapper {
-    display: flex;
-    border-top: 2px solid #222;
-}
-
-#chatInput {
-    flex: 1;
-    border: none;
-    padding: 10px;
-    font-family: 'Courier Prime', monospace;
-    font-size: 12px;
-    outline: none;
-}
-
-#chatSend {
-    background: #222;
-    color: #fff;
-    border: none;
-    padding: 10px 15px;
-    cursor: pointer;
-    font-family: 'Courier Prime', monospace;
-    font-weight: 700;
-}
-
-#chatSend:hover {
-    background: #444;
-}
-
-#info { 
-    color: #666;
-    margin-top: 12px;
-    font-size: 13px;
-    text-align: center;
-    line-height: 1.8;
-}
-
-.loading-dots::after {
-    content: '';
-    animation: dots 1.5s infinite;
-}
-
+.loading-dots::after { content: ''; animation: dots 1.5s infinite; }
 @keyframes dots {
     0%, 20% { content: ''; }
     40% { content: '.'; }
@@ -405,6 +327,7 @@ canvas {
 .mode-badge.volleyball { background: #e3f2fd; color: #1976d2; }
 .mode-badge.tennis { background: #c8e6c9; color: #388e3c; }
 .mode-badge.badminton { background: #fff3e0; color: #e65100; }
+.mode-badge.basketball { background: #ffccbc; color: #bf360c; }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
 </head>
@@ -442,7 +365,14 @@ canvas {
                 <div class="radio-circle"></div>
                 <div class="radio-text">
                     <div class="radio-title">🏸 Badminton</div>
-                    <div class="radio-desc">1 touch, no bounces, shuttlecock physics</div>
+                    <div class="radio-desc">1 touch, no bounces, shuttlecock</div>
+                </div>
+            </div>
+            <div class="radio-option" data-mode="basketball">
+                <div class="radio-circle"></div>
+                <div class="radio-text">
+                    <div class="radio-title">🏀 Basketball</div>
+                    <div class="radio-desc">Score in hoops, RIGHT CLICK to shoot</div>
                 </div>
             </div>
         </div>
@@ -487,7 +417,7 @@ canvas {
             </div>
         </div>
     </div>
-    <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = hit | JUMP + CLICK = smash</div>
+    <div id="info"></div>
 </div>
 
 <script>
@@ -502,85 +432,126 @@ const GRAVITY = 0.35;
 const HIT_RANGE = 90;
 const HAND_SIZE = 12;
 
-// Game settings
 let selectedMode = 'volleyball';
 let activeMode = 'volleyball';
 
-// Mode-specific settings
 const MODES = {
     volleyball: {
-        netHeight: 140,
-        maxTouches: 3,
-        allowBounce: false,
-        ballGravity: 0.22,
-        ballColor: '#ffffff',
-        playerColor: '#3366ff',
-        opponentColor: '#ff4444',
-        handColor: '#2255dd',
-        opponentHandColor: '#dd3333',
-        groundColor: '#5a8f3c',
-        skyColors: ['#87CEEB', '#d4eef7'],
-        ballSize: 16
+        netHeight: 140, maxTouches: 3, allowBounce: false,
+        ballGravity: 0.22, ballColor: '#ffffff',
+        playerColor: '#3366ff', opponentColor: '#ff4444',
+        handColor: '#2255dd', opponentHandColor: '#dd3333',
+        groundColor: '#5a8f3c', skyColors: ['#87CEEB', '#d4eef7'],
+        ballSize: 16, hasRacket: false
     },
     tennis: {
-        netHeight: 80,
-        maxTouches: 1,
-        allowBounce: true,
-        ballGravity: 0.25,
-        ballColor: '#ccff00',
-        playerColor: '#2e7d32',
-        opponentColor: '#c62828',
-        handColor: '#1b5e20',
-        opponentHandColor: '#b71c1c',
-        groundColor: '#1565c0',
-        skyColors: ['#4fc3f7', '#81d4fa'],
-        ballSize: 14
+        netHeight: 80, maxTouches: 1, allowBounce: true,
+        ballGravity: 0.25, ballColor: '#ccff00',
+        playerColor: '#2e7d32', opponentColor: '#c62828',
+        handColor: '#1b5e20', opponentHandColor: '#b71c1c',
+        groundColor: '#1565c0', skyColors: ['#4fc3f7', '#81d4fa'],
+        ballSize: 14, hasRacket: true, racketColor: '#8B4513'
     },
     badminton: {
-        netHeight: 155,
-        maxTouches: 1,
-        allowBounce: false,
-        ballGravity: 0.12,
-        shuttleDrag: 0.992,
+        netHeight: 155, maxTouches: 1, allowBounce: false,
+        ballGravity: 0.12, shuttleDrag: 0.992,
         ballColor: '#ffffff',
-        playerColor: '#6a1b9a',
-        opponentColor: '#00838f',
-        handColor: '#4a148c',
-        opponentHandColor: '#006064',
-        groundColor: '#43a047',
-        skyColors: ['#fff8e1', '#ffecb3'],
-        ballSize: 12
+        playerColor: '#6a1b9a', opponentColor: '#00838f',
+        handColor: '#4a148c', opponentHandColor: '#006064',
+        groundColor: '#43a047', skyColors: ['#fff8e1', '#ffecb3'],
+        ballSize: 12, hasRacket: true, racketColor: '#333'
+    },
+    basketball: {
+        netHeight: 0, maxTouches: 999, allowBounce: true,
+        ballGravity: 0.3, ballColor: '#ff6600',
+        playerColor: '#1565c0', opponentColor: '#c62828',
+        handColor: '#0d47a1', opponentHandColor: '#b71c1c',
+        groundColor: '#d7a86e', skyColors: ['#424242', '#616161'],
+        ballSize: 18, hasRacket: false,
+        hoopHeight: 140, hoopWidth: 45
     }
 };
 
-function getModeSettings() {
-    return MODES[activeMode];
-}
+function getModeSettings() { return MODES[activeMode]; }
 
-let playerScore = 0;
-let opponentScore = 0;
+let playerScore = 0, opponentScore = 0;
 let serveSide = 'player';
 let gameState = 'menu';
 let roundTimer = 0;
 let gameMode = 'solo';
 let pointScored = false;
 
-// Touch tracking
-let playerTouches = 0;
-let opponentTouches = 0;
+let playerTouches = 0, opponentTouches = 0;
 let lastTouchSide = null;
 
-// Multiplayer
-let peer = null;
-let conn = null;
-let isHost = false;
-let lobbyCode = '';
+let peer = null, conn = null;
+let isHost = false, lobbyCode = '';
 let opponentSelectedMode = 'volleyball';
 
 const keys = {};
 let clickedThisFrame = false;
+let rightClickedThisFrame = false;
 let setPressed = false;
-let remoteInput = { left: false, right: false, jump: false, set: false, click: false };
+let remoteInput = { left: false, right: false, jump: false, set: false, click: false, rightClick: false };
+
+// AI Learning System
+const aiMemory = {
+    playerPatterns: {
+        avgHitPosX: 0.3,
+        avgHitPosY: 0.5,
+        spikeFrequency: 0.3,
+        preferredSide: 0,
+        hitCount: 0
+    },
+    mistakes: {
+        missedBalls: 0,
+        badPositioning: 0,
+        tooSlowReaction: 0
+    },
+    successfulMoves: {
+        spikes: 0,
+        sets: 0,
+        saves: 0
+    },
+    adaptations: {
+        reactionSpeed: 1,
+        aggressiveness: 0.5,
+        positioningBias: 0
+    }
+};
+
+function updateAILearning(event, data) {
+    switch(event) {
+        case 'playerHit':
+            const m = aiMemory.playerPatterns;
+            m.hitCount++;
+            m.avgHitPosX = (m.avgHitPosX * (m.hitCount - 1) + data.x / W) / m.hitCount;
+            m.avgHitPosY = (m.avgHitPosY * (m.hitCount - 1) + data.y / H) / m.hitCount;
+            if (data.isSpike) m.spikeFrequency = (m.spikeFrequency * 0.9) + 0.1;
+            else m.spikeFrequency *= 0.95;
+            m.preferredSide = m.avgHitPosX < 0.5 ? -1 : 1;
+            break;
+        case 'aiMissed':
+            aiMemory.mistakes.missedBalls++;
+            aiMemory.adaptations.reactionSpeed = Math.min(1.5, aiMemory.adaptations.reactionSpeed + 0.05);
+            break;
+        case 'aiScored':
+            aiMemory.successfulMoves[data.type]++;
+            aiMemory.adaptations.aggressiveness = Math.min(0.8, aiMemory.adaptations.aggressiveness + 0.02);
+            break;
+        case 'aiFailed':
+            aiMemory.adaptations.aggressiveness = Math.max(0.2, aiMemory.adaptations.aggressiveness - 0.03);
+            break;
+        case 'positioning':
+            if (data.success) {
+                aiMemory.successfulMoves.saves++;
+            } else {
+                aiMemory.mistakes.badPositioning++;
+                aiMemory.adaptations.positioningBias += data.direction * 0.1;
+            }
+            break;
+    }
+}
 
 // ==================== CHAT ====================
 function addChatMessage(text, type) {
@@ -590,6 +561,7 @@ function addChatMessage(text, type) {
     msg.textContent = text;
     messagesDiv.appendChild(msg);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    if (messagesDiv.children.length > 50) messagesDiv.removeChild(messagesDiv.firstChild);
 }
 
 function sendChatMessage() {
@@ -603,19 +575,11 @@ function sendChatMessage() {
 }
 
 document.getElementById('chatSend').addEventListener('click', sendChatMessage);
-document.getElementById('chatInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        sendChatMessage();
-    }
-});
+document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMessage(); });
 
-// ==================== SOUND EFFECTS ====================
+// ==================== SOUND ====================
 let audioCtx = null;
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
 function playSound(type) {
     if (!audioCtx) return;
@@ -625,101 +589,27 @@ function playSound(type) {
     gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
 
-    switch(type) {
-        case 'set':
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(500, now);
-            osc.frequency.exponentialRampToValueAtTime(700, now + 0.1);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.start(now);
-            osc.stop(now + 0.15);
-            break;
-        case 'hit':
-            osc.type = activeMode === 'badminton' ? 'sine' : 'triangle';
-            osc.frequency.setValueAtTime(activeMode === 'badminton' ? 800 : 300, now);
-            osc.frequency.exponentialRampToValueAtTime(activeMode === 'badminton' ? 400 : 500, now + 0.08);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.start(now);
-            osc.stop(now + 0.15);
-            break;
-        case 'smash':
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, now);
-            osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-            osc.start(now);
-            osc.stop(now + 0.18);
-            break;
-        case 'score':
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(523, now);
-            osc.frequency.setValueAtTime(659, now + 0.12);
-            osc.frequency.setValueAtTime(784, now + 0.24);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.setValueAtTime(0.2, now + 0.3);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-            osc.start(now);
-            osc.stop(now + 0.5);
-            break;
-        case 'lose':
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-            osc.start(now);
-            osc.stop(now + 0.4);
-            break;
-        case 'fault':
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(200, now);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            osc.start(now);
-            osc.stop(now + 0.3);
-            break;
-        case 'net':
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(180, now);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-            osc.start(now);
-            osc.stop(now + 0.12);
-            break;
-        case 'bounce':
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(activeMode === 'tennis' ? 400 : 250, now);
-            osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-            osc.start(now);
-            osc.stop(now + 0.1);
-            break;
-        case 'whistle':
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, now);
-            osc.frequency.setValueAtTime(1000, now + 0.1);
-            osc.frequency.setValueAtTime(800, now + 0.2);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-            osc.start(now);
-            osc.stop(now + 0.35);
-            break;
-    }
+    const sounds = {
+        set: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(500, now); osc.frequency.exponentialRampToValueAtTime(700, now + 0.1); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); osc.start(now); osc.stop(now + 0.15); },
+        hit: () => { osc.type = activeMode === 'badminton' ? 'sine' : 'triangle'; osc.frequency.setValueAtTime(activeMode === 'badminton' ? 800 : 300, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.08); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); osc.start(now); osc.stop(now + 0.15); },
+        smash: () => { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.05); gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18); osc.start(now); osc.stop(now + 0.18); },
+        score: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.12); osc.frequency.setValueAtTime(784, now + 0.24); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc.start(now); osc.stop(now + 0.5); },
+        lose: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(200, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); osc.start(now); osc.stop(now + 0.4); },
+        bounce: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(activeMode === 'basketball' ? 150 : 300, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.08); gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1); },
+        net: () => { osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12); osc.start(now); osc.stop(now + 0.12); },
+        whistle: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1000, now + 0.1); osc.frequency.setValueAtTime(800, now + 0.2); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35); osc.start(now); osc.stop(now + 0.35); },
+        swish: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.15); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); osc.start(now); osc.stop(now + 0.2); },
+        shoot: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+    };
+    if (sounds[type]) sounds[type]();
 }
 
 // ==================== SCREENS ====================
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     document.getElementById('gameContainer').style.display = 'none';
-    if (screenId === 'game') {
-        document.getElementById('gameContainer').style.display = 'flex';
-    } else {
-        document.getElementById(screenId).style.display = 'flex';
-    }
+    if (screenId === 'game') document.getElementById('gameContainer').style.display = 'flex';
+    else document.getElementById(screenId).style.display = 'flex';
 }
 
 function exitToMenu() {
@@ -731,8 +621,7 @@ function exitToMenu() {
 }
 
 // ==================== SETTINGS ====================
-const gameModeGroup = document.getElementById('gameModeGroup');
-gameModeGroup.addEventListener('click', (e) => {
+document.getElementById('gameModeGroup').addEventListener('click', e => {
     const option = e.target.closest('.radio-option');
     if (option) {
         document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
@@ -745,19 +634,13 @@ gameModeGroup.addEventListener('click', (e) => {
 const savedMode = localStorage.getItem('gameMode');
 if (savedMode && MODES[savedMode]) {
     selectedMode = savedMode;
-    document.querySelectorAll('.radio-option').forEach(o => {
-        o.classList.toggle('selected', o.dataset.mode === selectedMode);
-    });
+    document.querySelectorAll('.radio-option').forEach(o => o.classList.toggle('selected', o.dataset.mode === selectedMode));
 }
 
 // ==================== MULTIPLAYER ====================
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 5; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
+    return Array(5).fill().map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
 function createLobby() {
@@ -767,32 +650,18 @@ function createLobby() {
     showScreen('waitingScreen');
     
     peer = new Peer('vball-' + lobbyCode);
-    
-    peer.on('open', (id) => {
-        console.log('Lobby created:', id);
-    });
-    
-    peer.on('connection', (connection) => {
+    peer.on('open', () => console.log('Lobby created'));
+    peer.on('connection', connection => {
         conn = connection;
         isHost = true;
         gameMode = 'host';
-        
-        conn.on('open', () => {
-            setupConnectionHandlers();
-        });
-        
-        conn.on('data', (data) => {
-            handleNetworkData(data);
-        });
+        conn.on('open', () => setupConnectionHandlers());
+        conn.on('data', handleNetworkData);
     });
-    
-    peer.on('error', (err) => {
+    peer.on('error', err => {
         if (err.type === 'unavailable-id') {
             document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, retrying...</span>';
-            setTimeout(() => {
-                cleanupPeer();
-                createLobby();
-            }, 1000);
+            setTimeout(() => { cleanupPeer(); createLobby(); }, 1000);
         } else {
             document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Error: ' + err.type + '</span>';
         }
@@ -810,28 +679,21 @@ function joinLobby() {
     document.getElementById('connectBtn').disabled = true;
     
     peer = new Peer();
-    
     peer.on('open', () => {
         conn = peer.connect('vball-' + code, { reliable: true });
-        
         conn.on('open', () => {
             isHost = false;
             gameMode = 'client';
             setupConnectionHandlers();
-            conn.send({ type: 'ready', selectedMode: selectedMode });
+            conn.send({ type: 'ready', selectedMode });
         });
-        
-        conn.on('data', (data) => {
-            handleNetworkData(data);
-        });
-        
-        conn.on('error', (err) => {
+        conn.on('data', handleNetworkData);
+        conn.on('error', () => {
             document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
             document.getElementById('connectBtn').disabled = false;
         });
     });
-    
-    peer.on('error', (err) => {
+    peer.on('error', () => {
         document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Lobby not found</span>';
         document.getElementById('connectBtn').disabled = false;
     });
@@ -844,47 +706,25 @@ function joinLobby() {
     }, 10000);
 }
 
-function setupConnectionHandlers() {
-    conn.on('close', () => {
-        alert('Opponent disconnected');
-        location.reload();
-    });
-}
+function setupConnectionHandlers() { conn.on('close', () => { alert('Opponent disconnected'); location.reload(); }); }
 
 function handleNetworkData(data) {
-    if (data.type === 'ready' && isHost) {
-        opponentSelectedMode = data.selectedMode;
-        startMultiplayerGame();
-    } else if (data.type === 'start' && !isHost) {
-        opponentSelectedMode = data.selectedMode;
-        activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball';
-        beginGame();
-    } else if (data.type === 'state' && !isHost) {
-        player.x = W - data.opponent.x - player.w;
-        player.y = data.opponent.y;
-        player.handAction = data.opponent.handAction || 'idle';
-        player.handTimer = data.opponent.handTimer || 0;
-        opponent.x = W - data.player.x - opponent.w;
-        opponent.y = data.player.y;
-        opponent.handAction = data.player.handAction || 'idle';
-        opponent.handTimer = data.player.handTimer || 0;
-        ball.x = W - data.ball.x;
-        ball.y = data.ball.y;
-        ball.vx = -data.ball.vx;
-        ball.vy = data.ball.vy;
-        playerScore = data.opponentScore;
-        opponentScore = data.playerScore;
-        playerTouches = data.opponentTouches;
-        opponentTouches = data.playerTouches;
+    if (data.type === 'ready' && isHost) { opponentSelectedMode = data.selectedMode; startMultiplayerGame(); }
+    else if (data.type === 'start' && !isHost) { opponentSelectedMode = data.selectedMode; activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball'; beginGame(); }
+    else if (data.type === 'state' && !isHost) {
+        player.x = W - data.opponent.x - player.w; player.y = data.opponent.y;
+        player.handAction = data.opponent.handAction || 'idle'; player.handTimer = data.opponent.handTimer || 0;
+        opponent.x = W - data.player.x - opponent.w; opponent.y = data.player.y;
+        opponent.handAction = data.player.handAction || 'idle'; opponent.handTimer = data.player.handTimer || 0;
+        ball.x = W - data.ball.x; ball.y = data.ball.y; ball.vx = -data.ball.vx; ball.vy = data.ball.vy;
+        playerScore = data.opponentScore; opponentScore = data.playerScore;
+        playerTouches = data.opponentTouches; opponentTouches = data.playerTouches;
         gameState = data.gameState;
         updateScoreDisplay();
-    } else if (data.type === 'input' && isHost) {
-        remoteInput = data.input;
-    } else if (data.type === 'sound') {
-        playSound(data.sound);
-    } else if (data.type === 'chat') {
-        addChatMessage(data.message, 'opponent');
     }
+    else if (data.type === 'input' && isHost) remoteInput = data.input;
+    else if (data.type === 'sound') playSound(data.sound);
+    else if (data.type === 'chat') addChatMessage(data.message, 'opponent');
 }
 
 function sendState() {
@@ -894,64 +734,45 @@ function sendState() {
             player: { x: player.x, y: player.y, handAction: player.handAction, handTimer: player.handTimer },
             opponent: { x: opponent.x, y: opponent.y, handAction: opponent.handAction, handTimer: opponent.handTimer },
             ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
-            playerScore: playerScore,
-            opponentScore: opponentScore,
-            playerTouches: playerTouches,
-            opponentTouches: opponentTouches,
-            gameState: gameState
+            playerScore, opponentScore, playerTouches, opponentTouches, gameState
         });
     }
 }
 
 function sendInput() {
     if (conn && conn.open && !isHost) {
-        conn.send({
-            type: 'input',
-            input: {
-                left: keys['a'],
-                right: keys['d'],
-                jump: keys['w'] || keys[' '],
-                set: setPressed,
-                click: clickedThisFrame
-            }
-        });
+        conn.send({ type: 'input', input: { left: keys['a'], right: keys['d'], jump: keys['w'] || keys[' '], set: setPressed, click: clickedThisFrame, rightClick: rightClickedThisFrame } });
     }
 }
 
 function startMultiplayerGame() {
     activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball';
-    conn.send({ type: 'start', selectedMode: selectedMode });
+    conn.send({ type: 'start', selectedMode });
     beginGame();
 }
 
 function beginGame() {
     const mode = getModeSettings();
     let modeText = isHost ? '🟢 Hosting' : (gameMode === 'client' ? '🔵 Connected' : 'vs AI');
-    let modeIcon = activeMode === 'volleyball' ? '🏐' : (activeMode === 'tennis' ? '🎾' : '🏸');
-    let modeBadge = `<span class="mode-badge ${activeMode}">${modeIcon} ${activeMode.toUpperCase()}</span>`;
-    document.getElementById('mode-indicator').innerHTML = modeText + ' ' + modeBadge;
+    const icons = { volleyball: '🏐', tennis: '🎾', badminton: '🏸', basketball: '🏀' };
+    document.getElementById('mode-indicator').innerHTML = modeText + ` <span class="mode-badge ${activeMode}">${icons[activeMode]} ${activeMode.toUpperCase()}</span>`;
     
     document.getElementById('chatMessages').innerHTML = '';
-    
-    if (gameMode !== 'solo') {
-        if (selectedMode !== opponentSelectedMode) {
-            addChatMessage(`Mode mismatch! You: ${selectedMode}, Opponent: ${opponentSelectedMode}`, 'system');
-            addChatMessage('Defaulting to Volleyball', 'system');
-        } else {
-            addChatMessage(`Playing ${activeMode}!`, 'system');
-        }
-        addChatMessage('Game started!', 'system');
-    } else {
-        addChatMessage(`Playing ${activeMode} vs AI`, 'system');
+    if (gameMode !== 'solo' && selectedMode !== opponentSelectedMode) {
+        addChatMessage(`Mode mismatch! Defaulting to Volleyball`, 'system');
     }
+    addChatMessage(`Playing ${activeMode}!`, 'system');
     
-    if (activeMode === 'volleyball') {
-        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike';
-    } else if (activeMode === 'tennis') {
-        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | CLICK = hit | JUMP + CLICK = smash';
-    } else {
-        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | CLICK = hit | JUMP + CLICK = smash';
-    }
+    const controls = {
+        volleyball: 'A/D = move | W/SPACE = jump | Q = set | CLICK = bump | JUMP+CLICK = spike',
+        tennis: 'A/D = move | W/SPACE = jump | CLICK = hit | JUMP+CLICK = smash',
+        badminton: 'A/D = move | W/SPACE = jump | CLICK = hit | JUMP+CLICK = smash',
+        basketball: 'A/D = move | W/SPACE = jump | CLICK = dribble/steal | RIGHT CLICK = shoot'
+    };
+    document.getElementById('info').textContent = controls[activeMode];
+    
+    // Reset AI learning for new game but keep some memory
+    aiMemory.adaptations.reactionSpeed = Math.max(1, aiMemory.adaptations.reactionSpeed * 0.8);
     
     initAudio();
     playSound('whistle');
@@ -965,29 +786,27 @@ function beginGame() {
 function cleanupPeer() {
     if (conn) conn.close();
     if (peer) peer.destroy();
-    conn = null;
-    peer = null;
+    conn = null; peer = null;
 }
 
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
     if (document.activeElement.tagName === 'INPUT') return;
-    
     keys[e.key.toLowerCase()] = true;
-    
     if (e.key.toLowerCase() === 'q') setPressed = true;
     if (e.key === 'Escape' && (gameState === 'playing' || gameState === 'roundOver')) exitToMenu();
     if (gameState === 'playing' || gameState === 'roundOver') e.preventDefault();
 });
 
-document.addEventListener('keyup', e => {
-    keys[e.key.toLowerCase()] = false;
-});
+document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 canvas.addEventListener('mousedown', e => {
     initAudio();
-    clickedThisFrame = true;
+    if (e.button === 0) clickedThisFrame = true;
+    else if (e.button === 2) rightClickedThisFrame = true;
 });
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 document.getElementById('createBtn').addEventListener('click', () => { initAudio(); createLobby(); });
 document.getElementById('joinBtn').addEventListener('click', () => {
@@ -998,56 +817,57 @@ document.getElementById('joinBtn').addEventListener('click', () => {
     showScreen('lobbyScreen');
     setTimeout(() => document.getElementById('lobbyInput').focus(), 100);
 });
-document.getElementById('soloBtn').addEventListener('click', () => {
-    initAudio();
-    gameMode = 'solo';
-    activeMode = selectedMode;
-    beginGame();
-});
+document.getElementById('soloBtn').addEventListener('click', () => { initAudio(); gameMode = 'solo'; activeMode = selectedMode; beginGame(); });
 document.getElementById('settingsBtn').addEventListener('click', () => showScreen('settingsScreen'));
 document.getElementById('settingsBackBtn').addEventListener('click', () => showScreen('menuScreen'));
 document.getElementById('connectBtn').addEventListener('click', () => { initAudio(); joinLobby(); });
 document.getElementById('lobbyBackBtn').addEventListener('click', () => { cleanupPeer(); showScreen('menuScreen'); });
 document.getElementById('waitingBackBtn').addEventListener('click', () => { cleanupPeer(); showScreen('menuScreen'); });
 document.getElementById('exitGameBtn').addEventListener('click', exitToMenu);
-document.getElementById('lobbyInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') { initAudio(); joinLobby(); } });
+document.getElementById('lobbyInput').addEventListener('keypress', e => { if (e.key === 'Enter') { initAudio(); joinLobby(); } });
 
 // ==================== ENTITIES ====================
 const player = {
     x: 150, y: GROUND_Y - 55, w: 55, h: 55,
-    vx: 0, vy: 0, speed: 4, jumpPower: -9,
+    vx: 0, vy: 0, speed: 4.5, jumpPower: -10,
     onGround: true, facingRight: true,
-    handAction: 'idle', handTimer: 0
+    handAction: 'idle', handTimer: 0,
+    hasBall: false, shootPower: 0, isShooting: false
 };
 
 const opponent = {
     x: W - 220, y: GROUND_Y - 55, w: 55, h: 55,
-    vx: 0, vy: 0, speed: 3.5, jumpPower: -9,
+    vx: 0, vy: 0, speed: 4, jumpPower: -10,
     onGround: true,
     actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
-    personality: 0, lastDecision: 0, mistakeChance: 0,
-    pendingAction: null, actionTimer: 0,
-    handAction: 'idle', handTimer: 0
+    lastDecision: 0,
+    handAction: 'idle', handTimer: 0,
+    hasBall: false, shootPower: 0, isShooting: false
 };
 
 const ball = {
     x: 200, y: 150, r: 16,
     vx: 0, vy: 0,
-    lastHitBy: null, bounceCount: 0
+    lastHitBy: null, bounceCount: 0,
+    holder: null
+};
+
+// Basketball hoops
+const hoops = {
+    left: { x: 60, y: GROUND_Y - 140, width: 45, rimY: GROUND_Y - 120 },
+    right: { x: W - 105, y: GROUND_Y - 140, width: 45, rimY: GROUND_Y - 120 }
 };
 
 // ==================== HAND ANIMATION ====================
 function triggerHandAction(entity, action) {
     entity.handAction = action;
-    entity.handTimer = action === 'idle' ? 0 : 20;
+    entity.handTimer = action === 'idle' ? 0 : 18;
 }
 
 function updateHands(entity) {
     if (entity.handTimer > 0) {
         entity.handTimer--;
-        if (entity.handTimer <= 0) {
-            entity.handAction = 'idle';
-        }
+        if (entity.handTimer <= 0) entity.handAction = 'idle';
     }
 }
 
@@ -1056,34 +876,37 @@ function getHandPositions(entity, facingLeft) {
     const cy = entity.y + entity.h / 2;
     const action = entity.handAction;
     const t = entity.handTimer;
-    
-    let leftHand = { x: 0, y: 0 };
-    let rightHand = { x: 0, y: 0 };
-    
     const dir = facingLeft ? -1 : 1;
     
-    if (action === 'idle') {
-        leftHand = { x: cx - 32 * dir, y: cy + 5 };
-        rightHand = { x: cx + 32 * dir, y: cy + 5 };
-    } else if (action === 'set') {
-        const lift = Math.sin((20 - t) / 20 * Math.PI) * 25;
-        leftHand = { x: cx - 15, y: entity.y - 5 - lift };
-        rightHand = { x: cx + 15, y: entity.y - 5 - lift };
+    let leftHand = { x: cx - 28 * dir, y: cy + 8, angle: 0 };
+    let rightHand = { x: cx + 28 * dir, y: cy + 8, angle: 0 };
+    
+    if (action === 'set') {
+        const lift = Math.sin((18 - t) / 18 * Math.PI) * 22;
+        leftHand = { x: cx - 12, y: entity.y - 3 - lift, angle: -0.3 };
+        rightHand = { x: cx + 12, y: entity.y - 3 - lift, angle: 0.3 };
     } else if (action === 'hit') {
-        const swing = Math.sin((20 - t) / 20 * Math.PI);
-        leftHand = { x: cx + (25 * dir * swing), y: cy - 10 + swing * 15 };
-        rightHand = { x: cx + (35 * dir * swing), y: cy - 5 + swing * 15 };
+        const swing = Math.sin((18 - t) / 18 * Math.PI);
+        leftHand = { x: cx - 20 * dir + 15 * dir * swing, y: cy - 5, angle: swing * 0.5 * dir };
+        rightHand = { x: cx + 20 * dir * swing, y: cy - 8 + swing * 12, angle: swing * 1.2 * dir };
     } else if (action === 'smash') {
-        const phase = (20 - t) / 20;
-        if (phase < 0.3) {
-            const lift = phase / 0.3;
-            leftHand = { x: cx - 10, y: entity.y - 10 - lift * 30 };
-            rightHand = { x: cx + 10, y: entity.y - 10 - lift * 30 };
+        const phase = (18 - t) / 18;
+        if (phase < 0.25) {
+            const lift = phase / 0.25;
+            leftHand = { x: cx - 8, y: entity.y - 8 - lift * 25, angle: -0.2 };
+            rightHand = { x: cx + 8, y: entity.y - 8 - lift * 28, angle: 0.2 };
         } else {
-            const swing = (phase - 0.3) / 0.7;
-            leftHand = { x: cx + (30 * dir * swing), y: entity.y - 40 + swing * 55 };
-            rightHand = { x: cx + (40 * dir * swing), y: entity.y - 40 + swing * 55 };
+            const swing = (phase - 0.25) / 0.75;
+            leftHand = { x: cx + 25 * dir * swing, y: entity.y - 33 + swing * 50, angle: swing * 1.5 * dir };
+            rightHand = { x: cx + 35 * dir * swing, y: entity.y - 36 + swing * 55, angle: swing * 2 * dir };
         }
+    } else if (action === 'shoot') {
+        const phase = (18 - t) / 18;
+        rightHand = { x: cx + 15 * dir, y: entity.y - 10 - phase * 30, angle: -0.5 * dir + phase * 1.5 * dir };
+        leftHand = { x: cx - 5 * dir, y: entity.y + 5 - phase * 10, angle: 0 };
+    } else if (action === 'dribble') {
+        const bounce = Math.sin((18 - t) / 18 * Math.PI * 3);
+        rightHand = { x: cx + 20 * dir, y: cy + 15 + bounce * 8, angle: 0.3 * dir };
     }
     
     return { left: leftHand, right: rightHand };
@@ -1092,42 +915,44 @@ function getHandPositions(entity, facingLeft) {
 // ==================== GAME LOGIC ====================
 function updateScoreDisplay() {
     document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
-    
     const mode = getModeSettings();
     let touchText = '';
-    if (activeMode === 'volleyball') {
-        touchText = `Touches: You ${playerTouches}/${mode.maxTouches} | Opp ${opponentTouches}/${mode.maxTouches}`;
-    } else if (mode.allowBounce) {
-        touchText = `Bounces: ${ball.bounceCount}/1`;
-    }
+    if (activeMode === 'volleyball') touchText = `Touches: You ${playerTouches}/${mode.maxTouches} | Opp ${opponentTouches}/${mode.maxTouches}`;
+    else if (activeMode === 'basketball') touchText = `${playerScore >= 21 || opponentScore >= 21 ? 'GAME!' : 'First to 21'}`;
+    else if (mode.allowBounce) touchText = `Bounces: ${ball.bounceCount}/1`;
     document.getElementById('touchIndicator').textContent = touchText;
 }
 
 function resetRound() {
     const mode = getModeSettings();
     
-    player.x = 180; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
-    player.handAction = 'idle'; player.handTimer = 0;
-    opponent.x = W - 240; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
+    player.x = activeMode === 'basketball' ? 150 : 180;
+    player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
+    player.handAction = 'idle'; player.handTimer = 0; player.hasBall = false; player.isShooting = false;
+    
+    opponent.x = activeMode === 'basketball' ? W - 205 : W - 240;
+    opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
     opponent.actionCooldown = 0; opponent.hitCount = 0;
-    opponent.personality = Math.random();
-    opponent.mistakeChance = 0.08 + Math.random() * 0.07;
-    opponent.pendingAction = null; opponent.actionTimer = 0;
-    opponent.handAction = 'idle'; opponent.handTimer = 0;
+    opponent.lastDecision = 0;
+    opponent.handAction = 'idle'; opponent.handTimer = 0; opponent.hasBall = false; opponent.isShooting = false;
 
     ball.vy = 0; ball.vx = 0;
-    ball.lastHitBy = null; ball.bounceCount = 0;
+    ball.lastHitBy = null; ball.bounceCount = 0; ball.holder = null;
     ball.r = mode.ballSize;
     
     playerTouches = 0; opponentTouches = 0;
     lastTouchSide = null;
     pointScored = false;
     
-    if (serveSide === 'player') {
+    if (activeMode === 'basketball') {
+        ball.x = W / 2;
+        ball.y = 100;
+    } else if (serveSide === 'player') {
         ball.x = 220; ball.y = 140;
     } else {
         ball.x = W - 220; ball.y = 140;
     }
+    
     gameState = 'playing';
     roundTimer = 0;
     updateScoreDisplay();
@@ -1139,25 +964,21 @@ function ballCenter(rect) { return dist(rect.x + rect.w/2, rect.y + rect.h/2, ba
 
 function capBallSpeed(maxSpd) {
     let spd = Math.sqrt(ball.vx**2 + ball.vy**2);
-    if (spd > maxSpd) {
-        ball.vx = (ball.vx / spd) * maxSpd;
-        ball.vy = (ball.vy / spd) * maxSpd;
-    }
+    if (spd > maxSpd) { ball.vx = (ball.vx / spd) * maxSpd; ball.vy = (ball.vy / spd) * maxSpd; }
 }
 
 function registerTouch(isPlayer) {
     if (gameState !== 'playing' || pointScored) return false;
+    if (activeMode === 'basketball') return true;
     
     const mode = getModeSettings();
     const side = isPlayer ? 'player' : 'opponent';
     
     if (lastTouchSide !== side) {
-        if (isPlayer) playerTouches = 1;
-        else opponentTouches = 1;
+        if (isPlayer) playerTouches = 1; else opponentTouches = 1;
         lastTouchSide = side;
     } else {
-        if (isPlayer) playerTouches++;
-        else opponentTouches++;
+        if (isPlayer) playerTouches++; else opponentTouches++;
     }
     
     ball.bounceCount = 0;
@@ -1165,25 +986,19 @@ function registerTouch(isPlayer) {
     
     if (isPlayer && playerTouches > mode.maxTouches) return false;
     if (!isPlayer && opponentTouches > mode.maxTouches) return false;
-    
     return true;
 }
 
 function doSet(rect, direction) {
-    if (gameState !== 'playing' || pointScored) return false;
+    if (gameState !== 'playing' || pointScored || activeMode === 'basketball') return false;
     if (activeMode !== 'volleyball') return doHit(rect, direction);
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
-    if (!registerTouch(isPlayer)) {
-        scorePoint(!isPlayer);
-        playSound('fault');
-        return false;
-    }
+    if (!registerTouch(isPlayer)) { scorePoint(!isPlayer); return false; }
     
     triggerHandAction(rect, 'set');
-    ball.vx = direction * 1.5;
-    ball.vy = -10;
+    ball.vx = direction * 1.5; ball.vy = -10;
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
     playSound('set');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'set' });
@@ -1192,28 +1007,24 @@ function doSet(rect, direction) {
 
 function doHit(rect, direction) {
     if (gameState !== 'playing' || pointScored) return false;
+    if (activeMode === 'basketball') return doDribble(rect);
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
-    if (!registerTouch(isPlayer)) {
-        scorePoint(!isPlayer);
-        playSound('fault');
-        return false;
-    }
+    if (!registerTouch(isPlayer)) { scorePoint(!isPlayer); return false; }
+    
+    if (isPlayer) updateAILearning('playerHit', { x: ball.x, y: ball.y, isSpike: false });
     
     triggerHandAction(rect, 'hit');
     
-    // Badminton-specific: higher arc and stronger hit
     if (activeMode === 'badminton') {
-        ball.vx = direction * 10;
-        ball.vy = -9;
+        ball.vx = direction * 11; ball.vy = -10;
     } else {
-        ball.vx = direction * 7;
-        ball.vy = -8;
+        ball.vx = direction * 7; ball.vy = -8;
     }
     
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
-    capBallSpeed(activeMode === 'badminton' ? 14 : 12);
+    capBallSpeed(activeMode === 'badminton' ? 15 : 12);
     playSound('hit');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'hit' });
     return true;
@@ -1221,41 +1032,131 @@ function doHit(rect, direction) {
 
 function doSmash(rect, direction) {
     if (gameState !== 'playing' || pointScored) return false;
+    if (activeMode === 'basketball') return doShoot(rect, direction);
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
     const mode = getModeSettings();
-    const netTop = GROUND_Y - mode.netHeight;
     
-    if (!registerTouch(isPlayer)) {
-        scorePoint(!isPlayer);
-        playSound('fault');
-        return false;
-    }
+    if (!registerTouch(isPlayer)) { scorePoint(!isPlayer); return false; }
+    
+    if (isPlayer) updateAILearning('playerHit', { x: ball.x, y: ball.y, isSpike: true });
     
     triggerHandAction(rect, 'smash');
     
-    let distToNet = Math.abs(ball.x - NET_X);
-    
-    // Badminton-specific: steeper angle but still clears net
+    const netTop = GROUND_Y - mode.netHeight;
     if (activeMode === 'badminton') {
-        let smashVx = direction * 14;
-        // If we're high enough above net, smash down; otherwise hit flat
-        let smashVy = ball.y < netTop - 40 ? 4 : -2;
-        ball.vx = smashVx;
-        ball.vy = smashVy;
+        ball.vx = direction * 15;
+        ball.vy = ball.y < netTop - 40 ? 5 : -1;
     } else {
-        let smashVx = direction * (9 + Math.min(distToNet / 50, 3));
-        let smashVy = 3 + (ball.y < netTop ? 3 : 1);
-        ball.vx = smashVx;
-        ball.vy = smashVy;
+        ball.vx = direction * (10 + Math.min(Math.abs(ball.x - NET_X) / 50, 3));
+        ball.vy = 3 + (ball.y < netTop ? 3 : 1);
     }
     
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
-    capBallSpeed(activeMode === 'badminton' ? 16 : 14);
+    capBallSpeed(activeMode === 'badminton' ? 18 : 14);
     playSound('smash');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'smash' });
     return true;
+}
+
+// Basketball functions
+function doDribble(rect) {
+    if (ball.holder === rect) return true;
+    if (ballCenter(rect) > HIT_RANGE + 20) return false;
+    
+    const isPlayer = rect === player;
+    const otherHolder = isPlayer ? opponent : player;
+    
+    // Steal attempt
+    if (ball.holder === otherHolder) {
+        if (Math.random() > 0.6) { // 40% steal chance
+            otherHolder.hasBall = false;
+            ball.holder = rect;
+            rect.hasBall = true;
+            triggerHandAction(rect, 'dribble');
+            playSound('hit');
+            return true;
+        }
+        return false;
+    }
+    
+    if (!ball.holder) {
+        ball.holder = rect;
+        rect.hasBall = true;
+        triggerHandAction(rect, 'dribble');
+        playSound('bounce');
+    }
+    return true;
+}
+
+function doShoot(rect, direction) {
+    if (!rect.hasBall || ball.holder !== rect) return false;
+    
+    triggerHandAction(rect, 'shoot');
+    rect.hasBall = false;
+    ball.holder = null;
+    
+    const isPlayer = rect === player;
+    const targetHoop = isPlayer ? hoops.right : hoops.left;
+    const dx = targetHoop.x + targetHoop.width/2 - ball.x;
+    const dy = targetHoop.rimY - ball.y;
+    
+    // NBA 2K style arc shot
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const arcHeight = Math.max(80, dist * 0.4);
+    const time = dist / 8;
+    
+    ball.vx = dx / time * 0.85;
+    ball.vy = -arcHeight / time * 1.8;
+    
+    playSound('shoot');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'shoot' });
+    return true;
+}
+
+function checkBasketScore() {
+    const playerHoop = hoops.left;
+    const opponentHoop = hoops.right;
+    
+    // Check if ball goes through hoop
+    [{ hoop: playerHoop, scorer: 'opponent' }, { hoop: opponentHoop, scorer: 'player' }].forEach(({ hoop, scorer }) => {
+        if (ball.x > hoop.x && ball.x < hoop.x + hoop.width &&
+            ball.y > hoop.rimY - 10 && ball.y < hoop.rimY + 15 &&
+            ball.vy > 0) {
+            
+            const distFromHoop = Math.abs(ball.x - (hoop.x + hoop.width/2));
+            if (distFromHoop < hoop.width * 0.4) {
+                const points = ball.lastHitBy ? (dist(ball.x, ball.y, 
+                    scorer === 'player' ? player.x : opponent.x,
+                    scorer === 'player' ? player.y : opponent.y) > 250 ? 3 : 2) : 2;
+                
+                if (scorer === 'player') playerScore += points;
+                else opponentScore += points;
+                
+                playSound('swish');
+                updateScoreDisplay();
+                
+                ball.vy *= 0.3;
+                ball.vx *= 0.5;
+                
+                if (playerScore >= 21 || opponentScore >= 21) {
+                    scorePoint(playerScore >= 21);
+                } else {
+                    // Reset for next play
+                    setTimeout(() => {
+                        if (gameState === 'playing') {
+                            ball.x = W / 2; ball.y = 100;
+                            ball.vx = 0; ball.vy = 0;
+                            ball.holder = null;
+                            player.hasBall = false;
+                            opponent.hasBall = false;
+                        }
+                    }, 1000);
+                }
+            }
+        }
+    });
 }
 
 function rectCircleCollision(rx, ry, rw, rh, cx, cy, cr) {
@@ -1268,13 +1169,9 @@ function pushBallOutOfRect(rect) {
     let closestX = clamp(ball.x, rect.x, rect.x + rect.w);
     let closestY = clamp(ball.y, rect.y, rect.y + rect.h);
     let dx = ball.x - closestX, dy = ball.y - closestY;
-    let d = Math.sqrt(dx*dx + dy*dy);
-    if (d === 0) { dx = 0; dy = -1; d = 1; }
+    let d = Math.sqrt(dx*dx + dy*dy) || 1;
     let overlap = ball.r - d;
-    if (overlap > 0) {
-        ball.x += (dx / d) * (overlap + 1);
-        ball.y += (dy / d) * (overlap + 1);
-    }
+    if (overlap > 0) { ball.x += (dx / d) * (overlap + 1); ball.y += (dy / d) * (overlap + 1); }
 }
 
 // ==================== PLAYER ====================
@@ -1295,11 +1192,17 @@ function updatePlayer() {
     }
 
     if (clickedThisFrame && gameState === 'playing') {
-        if (!player.onGround && ball.y < player.y + 20) {
+        if (activeMode === 'basketball') {
+            doDribble(player);
+        } else if (!player.onGround && ball.y < player.y + 20) {
             doSmash(player, 1);
         } else {
             doHit(player, 1);
         }
+    }
+    
+    if (rightClickedThisFrame && gameState === 'playing' && activeMode === 'basketball') {
+        doShoot(player, 1);
     }
 
     player.vy += GRAVITY;
@@ -1311,7 +1214,19 @@ function updatePlayer() {
         player.vy = 0;
         player.onGround = true;
     }
-    player.x = clamp(player.x, 0, NET_X - player.w - 8);
+    
+    if (activeMode === 'basketball') {
+        player.x = clamp(player.x, 0, W - player.w);
+    } else {
+        player.x = clamp(player.x, 0, NET_X - player.w - 8);
+    }
+    
+    // Basketball ball following
+    if (player.hasBall && ball.holder === player) {
+        ball.x = player.x + player.w / 2 + (player.facingRight ? 20 : -20);
+        ball.y = player.y + player.h - 10 + Math.sin(Date.now() / 80) * 8;
+        ball.vx = 0; ball.vy = 0;
+    }
 }
 
 // ==================== OPPONENT ====================
@@ -1322,21 +1237,17 @@ function updateOpponent() {
         opponent.vx = 0;
         if (remoteInput.left) opponent.vx = opponent.speed;
         if (remoteInput.right) opponent.vx = -opponent.speed;
-        if (remoteInput.jump && opponent.onGround) {
-            opponent.vy = opponent.jumpPower;
-            opponent.onGround = false;
-        }
-        if (remoteInput.set && activeMode === 'volleyball' && gameState === 'playing') {
-            remoteInput.set = false;
-            doSet(opponent, -1);
-        }
+        if (remoteInput.jump && opponent.onGround) { opponent.vy = opponent.jumpPower; opponent.onGround = false; }
+        if (remoteInput.set && activeMode === 'volleyball' && gameState === 'playing') { remoteInput.set = false; doSet(opponent, -1); }
         if (remoteInput.click && gameState === 'playing') {
             remoteInput.click = false;
-            if (!opponent.onGround && ball.y < opponent.y + 20) {
-                doSmash(opponent, -1);
-            } else {
-                doHit(opponent, -1);
-            }
+            if (activeMode === 'basketball') doDribble(opponent);
+            else if (!opponent.onGround && ball.y < opponent.y + 20) doSmash(opponent, -1);
+            else doHit(opponent, -1);
+        }
+        if (remoteInput.rightClick && gameState === 'playing' && activeMode === 'basketball') {
+            remoteInput.rightClick = false;
+            doShoot(opponent, -1);
         }
     } else if (gameMode === 'solo') {
         updateAI();
@@ -1352,225 +1263,293 @@ function updateOpponent() {
             opponent.vy = 0;
             opponent.onGround = true;
         }
-        opponent.x = clamp(opponent.x, NET_X + 8, W - opponent.w);
+        
+        if (activeMode === 'basketball') {
+            opponent.x = clamp(opponent.x, 0, W - opponent.w);
+        } else {
+            opponent.x = clamp(opponent.x, NET_X + 8, W - opponent.w);
+        }
+    }
+    
+    if (opponent.hasBall && ball.holder === opponent) {
+        ball.x = opponent.x + opponent.w / 2 - 20;
+        ball.y = opponent.y + opponent.h - 10 + Math.sin(Date.now() / 80) * 8;
+        ball.vx = 0; ball.vy = 0;
     }
 }
 
 function updateAI() {
-    if (gameState !== 'playing' || pointScored) {
-        opponent.vx = 0;
-        opponent.pendingAction = null;
-        opponent.actionTimer = 0;
-        return;
-    }
+    if (gameState !== 'playing' || pointScored) { opponent.vx = 0; return; }
     
     const mode = getModeSettings();
-    const netTop = GROUND_Y - mode.netHeight;
+    const netTop = GROUND_Y - (mode.netHeight || 0);
+    const adapt = aiMemory.adaptations;
     
     opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
     opponent.lastDecision++;
 
-    let ballOnMySide = ball.x > NET_X;
-    let distToB = ballCenter(opponent);
-
-    // Predict landing
-    let predictX = ball.x, predictY = ball.y;
-    let pvx = ball.vx, pvy = ball.vy;
-    for (let i = 0; i < 80; i++) {
-        pvy += mode.ballGravity;
-        if (activeMode === 'badminton') pvx *= mode.shuttleDrag;
-        predictX += pvx;
-        predictY += pvy;
-        if (predictY >= GROUND_Y - 20) break;
+    if (activeMode === 'basketball') {
+        updateAIBasketball();
+        return;
     }
 
-    if (opponent.lastDecision > 25 + Math.random() * 15) {
+    const ballOnMySide = ball.x > NET_X;
+    const distToB = ballCenter(opponent);
+
+    // Predict landing with learning adjustment
+    let predictX = ball.x, predictY = ball.y;
+    let pvx = ball.vx, pvy = ball.vy;
+    for (let i = 0; i < 70; i++) {
+        pvy += mode.ballGravity;
+        if (activeMode === 'badminton') pvx *= mode.shuttleDrag;
+        predictX += pvx; predictY += pvy;
+        if (predictY >= GROUND_Y - 20) break;
+    }
+    
+    // Apply learned positioning bias
+    predictX += adapt.positioningBias * 30;
+
+    // Decision making with learning
+    const reactionDelay = Math.max(15, 30 - adapt.reactionSpeed * 10);
+    if (opponent.lastDecision > reactionDelay) {
         opponent.lastDecision = 0;
         
-        if (Math.random() < opponent.mistakeChance) {
-            opponent.targetX = opponent.x + (Math.random() - 0.5) * 100;
-        } else if (ballOnMySide) {
-            if (opponent.personality < 0.3) {
-                opponent.targetX = ball.x - opponent.w / 2 + (Math.random() - 0.5) * 30;
-            } else if (opponent.personality < 0.7) {
-                opponent.targetX = predictX - opponent.w / 2 + (Math.random() - 0.5) * 20;
+        // Predict based on player patterns
+        const expectedPlayerShot = aiMemory.playerPatterns.avgHitPosX * W;
+        
+        if (ballOnMySide) {
+            // More aggressive positioning based on learning
+            if (adapt.aggressiveness > 0.5) {
+                opponent.targetX = ball.x - opponent.w / 2;
             } else {
-                opponent.targetX = Math.max(predictX - opponent.w / 2, W * 0.65);
+                opponent.targetX = predictX - opponent.w / 2;
             }
         } else {
-            opponent.targetX = W * (0.7 + opponent.personality * 0.1) - opponent.w / 2;
+            // Position based on expected player behavior
+            opponent.targetX = W * 0.72 + adapt.positioningBias * 20;
         }
     }
 
     opponent.targetX = clamp(opponent.targetX, NET_X + 12, W - opponent.w - 12);
 
-    let diff = opponent.targetX - opponent.x;
-    if (Math.abs(diff) > 8 + Math.random() * 5) {
-        opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * (0.85 + Math.random() * 0.3);
+    const diff = opponent.targetX - opponent.x;
+    if (Math.abs(diff) > 6) {
+        opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * adapt.reactionSpeed;
     } else {
         opponent.vx = 0;
     }
 
-    // Handle pending action
-    if (opponent.pendingAction && opponent.actionTimer > 0) {
-        opponent.actionTimer--;
-        if (opponent.actionTimer <= 0 && gameState === 'playing' && !pointScored) {
-            let action = opponent.pendingAction;
-            opponent.pendingAction = null;
-            
-            if (action === 'jump' && opponent.onGround) {
-                opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
+    // Action logic with learning
+    if (ballOnMySide && opponent.actionCooldown <= 0) {
+        const ballComingDown = ball.vy > 0;
+        const ballNear = distToB < HIT_RANGE + 25;
+        const ballAbove = ball.y < opponent.y;
+        const ballHigh = ball.y < netTop - 20;
+
+        // Jump decision
+        if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
+            if (ball.y < netTop + 80) {
+                opponent.vy = opponent.jumpPower * (0.95 + adapt.aggressiveness * 0.1);
                 opponent.onGround = false;
-            } else if (action === 'smash') {
+            }
+        }
+
+        // Hit decisions with learning
+        if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
+            if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40 && adapt.aggressiveness > 0.4) {
                 if (doSmash(opponent, -1)) {
-                    opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
+                    opponent.actionCooldown = 15;
                     opponent.hitCount = 0;
-                }
-            } else if (action === 'set') {
-                if (doSet(opponent, -1)) {
-                    opponent.actionCooldown = 10 + Math.floor(Math.random() * 6);
-                    opponent.hitCount = 1;
-                }
-            } else if (action === 'hit') {
-                if (doHit(opponent, -1)) {
-                    opponent.actionCooldown = 15 + Math.floor(Math.random() * 10);
-                    opponent.hitCount = 0;
-                }
-            }
-        }
-    }
-
-    // Decision making
-    if (ballOnMySide && opponent.actionCooldown <= 0 && !opponent.pendingAction) {
-        let ballComingDown = ball.vy > 0;
-        let ballNear = distToB < HIT_RANGE + 25;
-        let ballAbove = ball.y < opponent.y;
-        let ballHigh = ball.y < netTop - 20;
-
-        if (ballAbove && ballComingDown && distToB < 180 && opponent.onGround) {
-            if (ball.y < netTop + 100 && Math.random() > 0.15 && !opponent.pendingAction) {
-                opponent.pendingAction = 'jump';
-                opponent.actionTimer = Math.floor(Math.random() * 6) + 1;
-            }
-        }
-
-        if (ballNear && (ballAbove || ball.y < opponent.y + 30) && !opponent.pendingAction) {
-            if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
-                if (Math.random() > 0.2) {
-                    opponent.pendingAction = 'smash';
-                    opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
+                    updateAILearning('aiScored', { type: 'spikes' });
                 }
             } else if (activeMode === 'volleyball' && opponent.hitCount === 0 && ballComingDown) {
-                if (Math.random() > 0.3) {
-                    opponent.pendingAction = 'set';
-                    opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
+                if (doSet(opponent, -1)) {
+                    opponent.actionCooldown = 8;
+                    opponent.hitCount = 1;
+                    updateAILearning('aiScored', { type: 'sets' });
                 }
             } else if (ballComingDown) {
-                opponent.pendingAction = 'hit';
-                opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
+                if (doHit(opponent, -1)) {
+                    opponent.actionCooldown = 12;
+                    opponent.hitCount = 0;
+                    updateAILearning('aiScored', { type: 'saves' });
+                }
             }
         }
 
-        if (ballNear && ball.y > netTop + 50 && ballComingDown && !opponent.pendingAction) {
-            opponent.pendingAction = 'hit';
-            opponent.actionTimer = 1;
+        // Emergency save
+        if (ballNear && ball.y > netTop + 50 && ballComingDown) {
+            if (doHit(opponent, -1)) {
+                opponent.actionCooldown = 15;
+            }
         }
     }
 
-    if (!ballOnMySide) {
-        opponent.hitCount = 0;
-        opponent.pendingAction = null;
-        opponent.actionTimer = 0;
+    if (!ballOnMySide) opponent.hitCount = 0;
+}
+
+function updateAIBasketball() {
+    const distToB = ballCenter(opponent);
+    
+    // If has ball, try to score
+    if (opponent.hasBall && ball.holder === opponent) {
+        const targetHoop = hoops.left;
+        const distToHoop = dist(opponent.x, opponent.y, targetHoop.x, targetHoop.rimY);
+        
+        // Move towards good shooting position
+        const idealX = targetHoop.x + 180;
+        const diff = idealX - opponent.x;
+        
+        if (Math.abs(diff) > 20) {
+            opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * 0.8;
+        } else {
+            opponent.vx = 0;
+            // Shoot when in position
+            if (opponent.actionCooldown <= 0 && distToHoop < 350) {
+                if (opponent.onGround && Math.random() > 0.3) {
+                    opponent.vy = opponent.jumpPower * 0.7;
+                    opponent.onGround = false;
+                }
+                if (!opponent.onGround || Math.random() > 0.5) {
+                    doShoot(opponent, -1);
+                    opponent.actionCooldown = 30;
+                }
+            }
+        }
+    } else {
+        // Chase the ball
+        const targetX = ball.x - opponent.w / 2;
+        const diff = targetX - opponent.x;
+        
+        if (Math.abs(diff) > 10) {
+            opponent.vx = clamp(diff * 0.1, -opponent.speed, opponent.speed);
+        } else {
+            opponent.vx = 0;
+        }
+        
+        // Try to get the ball
+        if (distToB < HIT_RANGE + 20 && opponent.actionCooldown <= 0) {
+            doDribble(opponent);
+            opponent.actionCooldown = 15;
+        }
+        
+        // Jump for high balls
+        if (ball.y < opponent.y - 30 && distToB < 100 && opponent.onGround) {
+            opponent.vy = opponent.jumpPower;
+            opponent.onGround = false;
+        }
     }
 }
 
 // ==================== BALL ====================
 function updateBall() {
-    if (gameMode === 'client') return;
-    if (gameState !== 'playing') return;
-    if (pointScored) return;
+    if (gameMode === 'client' || gameState !== 'playing' || pointScored) return;
+    if (ball.holder) return; // Ball is held
 
     const mode = getModeSettings();
-    const netTop = GROUND_Y - mode.netHeight;
+    const netTop = GROUND_Y - (mode.netHeight || 0);
 
     ball.vy += mode.ballGravity;
-    if (activeMode === 'badminton') {
-        ball.vx *= mode.shuttleDrag;
-    }
+    if (activeMode === 'badminton') ball.vx *= mode.shuttleDrag;
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    capBallSpeed(16);
+    capBallSpeed(18);
 
     // Walls
-    if (ball.x - ball.r < 0) {
-        ball.x = ball.r;
-        ball.vx = Math.abs(ball.vx) * 0.7;
-        playSound('bounce');
-    }
-    if (ball.x + ball.r > W) {
-        ball.x = W - ball.r;
-        ball.vx = -Math.abs(ball.vx) * 0.7;
-        playSound('bounce');
-    }
-    if (ball.y - ball.r < 0) {
-        ball.y = ball.r;
-        ball.vy = Math.abs(ball.vy) * 0.7;
-        playSound('bounce');
-    }
+    if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx) * 0.7; playSound('bounce'); }
+    if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx) * 0.7; playSound('bounce'); }
+    if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy) * 0.7; playSound('bounce'); }
 
-    // Net
-    let hitNet = false;
-    if (ball.y + ball.r > netTop && ball.y - ball.r < GROUND_Y) {
-        if (ball.x - ball.r < NET_X + 5 && ball.x + ball.r > NET_X - 5) {
-            hitNet = true;
-            if (ball.x < NET_X) {
-                ball.x = NET_X - 5 - ball.r;
-                ball.vx = -Math.abs(ball.vx) * 0.5;
-            } else {
-                ball.x = NET_X + 5 + ball.r;
-                ball.vx = Math.abs(ball.vx) * 0.5;
+    // Net (not in basketball)
+    if (activeMode !== 'basketball' && mode.netHeight > 0) {
+        if (ball.y + ball.r > netTop && ball.y - ball.r < GROUND_Y) {
+            if (ball.x - ball.r < NET_X + 5 && ball.x + ball.r > NET_X - 5) {
+                playSound('net');
+                if (ball.x < NET_X) { ball.x = NET_X - 5 - ball.r; ball.vx = -Math.abs(ball.vx) * 0.5; }
+                else { ball.x = NET_X + 5 + ball.r; ball.vx = Math.abs(ball.vx) * 0.5; }
             }
         }
+        if (ball.x > NET_X - 12 && ball.x < NET_X + 12 && ball.y + ball.r > netTop && ball.y < netTop + 8) {
+            ball.y = netTop - ball.r;
+            ball.vy = -Math.abs(ball.vy) * 0.4;
+            playSound('net');
+        }
     }
-    if (ball.x > NET_X - 12 && ball.x < NET_X + 12 && ball.y + ball.r > netTop && ball.y < netTop + 8) {
-        ball.y = netTop - ball.r;
-        ball.vy = -Math.abs(ball.vy) * 0.4;
-        hitNet = true;
-    }
-    if (hitNet) playSound('net');
 
-    // Track side crossings
-    let currentSide = ball.x < NET_X ? 'player' : 'opponent';
-    if (lastTouchSide && currentSide !== lastTouchSide) {
-        if (currentSide === 'player') playerTouches = 0;
-        else opponentTouches = 0;
-        updateScoreDisplay();
+    // Basketball hoops collision
+    if (activeMode === 'basketball') {
+        checkBasketScore();
+        
+        // Backboard collision
+        [hoops.left, hoops.right].forEach(hoop => {
+            if (ball.x > hoop.x - 5 && ball.x < hoop.x + hoop.width + 5 &&
+                ball.y > hoop.y - 40 && ball.y < hoop.rimY) {
+                if (ball.x < hoop.x + hoop.width / 2) ball.vx = -Math.abs(ball.vx) * 0.6;
+                else ball.vx = Math.abs(ball.vx) * 0.6;
+                playSound('bounce');
+            }
+            // Rim
+            if (ball.y > hoop.rimY - 5 && ball.y < hoop.rimY + 10) {
+                if ((ball.x > hoop.x - 8 && ball.x < hoop.x + 8) || 
+                    (ball.x > hoop.x + hoop.width - 8 && ball.x < hoop.x + hoop.width + 8)) {
+                    ball.vy = -Math.abs(ball.vy) * 0.5;
+                    ball.vx *= 0.8;
+                    playSound('bounce');
+                }
+            }
+        });
+    }
+
+    // Side tracking
+    if (activeMode !== 'basketball') {
+        const currentSide = ball.x < NET_X ? 'player' : 'opponent';
+        if (lastTouchSide && currentSide !== lastTouchSide) {
+            if (currentSide === 'player') playerTouches = 0;
+            else opponentTouches = 0;
+            updateScoreDisplay();
+        }
     }
 
     // Player collisions
     if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
         pushBallOutOfRect(player);
-        ball.vy = Math.min(ball.vy, -2);
+        if (activeMode === 'basketball') ball.vy *= 0.5;
+        else ball.vy = Math.min(ball.vy, -2);
         playSound('bounce');
     }
     if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
         pushBallOutOfRect(opponent);
-        ball.vy = Math.min(ball.vy, -2);
+        if (activeMode === 'basketball') ball.vy *= 0.5;
+        else ball.vy = Math.min(ball.vy, -2);
         playSound('bounce');
     }
 
     // Ground
     if (ball.y + ball.r >= GROUND_Y) {
-        if (mode.allowBounce && ball.bounceCount < 1) {
-            ball.bounceCount++;
-            ball.y = GROUND_Y - ball.r;
-            ball.vy = -ball.vy * 0.55;
-            ball.vx *= 0.75;
-            playSound('bounce');
-            updateScoreDisplay();
+        if (mode.allowBounce) {
+            if (activeMode === 'basketball') {
+                ball.y = GROUND_Y - ball.r;
+                ball.vy = -ball.vy * 0.7;
+                ball.vx *= 0.85;
+                playSound('bounce');
+            } else if (ball.bounceCount < 1) {
+                ball.bounceCount++;
+                ball.y = GROUND_Y - ball.r;
+                ball.vy = -ball.vy * 0.55;
+                ball.vx *= 0.75;
+                playSound('bounce');
+                updateScoreDisplay();
+            } else {
+                scorePoint(ball.x >= NET_X);
+            }
         } else {
-            scorePoint(ball.x >= NET_X);
+            if (activeMode !== 'basketball') {
+                const isPlayerSide = ball.x < NET_X;
+                if (isPlayerSide) updateAILearning('aiScored', { type: 'spikes' });
+                else updateAILearning('aiMissed', {});
+                scorePoint(ball.x >= NET_X);
+            }
         }
     }
 }
@@ -1583,24 +1562,57 @@ function scorePoint(playerScored) {
     roundTimer = 100;
     ball.vy = 0; ball.vx = 0;
     ball.y = Math.min(ball.y, GROUND_Y - ball.r);
+    ball.holder = null;
+    player.hasBall = false;
+    opponent.hasBall = false;
 
-    if (playerScored) {
-        playerScore++;
-        serveSide = 'opponent';
-        playSound('score');
-    } else {
-        opponentScore++;
-        serveSide = 'player';
-        playSound('lose');
+    if (activeMode !== 'basketball') {
+        if (playerScored) { playerScore++; serveSide = 'opponent'; playSound('score'); }
+        else { opponentScore++; serveSide = 'player'; playSound('lose'); }
     }
     updateScoreDisplay();
 }
 
 // ==================== DRAWING ====================
+function drawRacket(x, y, angle, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    
+    // Handle
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(-3, 0, 6, 18);
+    
+    // Head
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (activeMode === 'badminton') {
+        ctx.ellipse(0, -12, 10, 14, 0, 0, Math.PI * 2);
+    } else {
+        ctx.ellipse(0, -10, 12, 12, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    
+    // Strings
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 0.5;
+    for (let i = -8; i <= 8; i += 4) {
+        ctx.beginPath();
+        ctx.moveTo(i, -22); ctx.lineTo(i, -2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-10, -12 + i); ctx.lineTo(10, -12 + i);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
+}
+
 function drawPlayer(entity, mode, facingLeft, label) {
     const hands = getHandPositions(entity, facingLeft);
     const handColor = entity === player ? mode.handColor : mode.opponentHandColor;
     const bodyColor = entity === player ? mode.playerColor : mode.opponentColor;
+    const hasRacket = mode.hasRacket;
     
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.12)';
@@ -1608,11 +1620,12 @@ function drawPlayer(entity, mode, facingLeft, label) {
     ctx.ellipse(entity.x + entity.w/2, GROUND_Y + 2, entity.w * 0.4, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Hands (behind body for some positions)
+    // Hands behind for some poses
     ctx.fillStyle = handColor;
-    if (entity.handAction === 'set' || (entity.handAction === 'smash' && entity.handTimer > 14)) {
+    if (entity.handAction === 'set' || (entity.handAction === 'smash' && entity.handTimer > 13)) {
         ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
-        ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+        if (hasRacket) drawRacket(hands.right.x, hands.right.y, hands.right.angle, mode.racketColor);
+        else ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
     }
     
     // Body
@@ -1631,11 +1644,12 @@ function drawPlayer(entity, mode, facingLeft, label) {
         ctx.fillRect(entity.x + 38, entity.y + 18, 5, 5);
     }
     
-    // Hands (in front for other positions)
+    // Hands in front
     ctx.fillStyle = handColor;
-    if (entity.handAction !== 'set' && !(entity.handAction === 'smash' && entity.handTimer > 14)) {
+    if (entity.handAction !== 'set' && !(entity.handAction === 'smash' && entity.handTimer > 13)) {
         ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
-        ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+        if (hasRacket) drawRacket(hands.right.x, hands.right.y, hands.right.angle, mode.racketColor);
+        else ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
     }
     
     // Label
@@ -1644,12 +1658,43 @@ function drawPlayer(entity, mode, facingLeft, label) {
     ctx.fillText(label, entity.x + (facingLeft ? 16 : 8), entity.y - 10);
 }
 
+function drawHoop(hoop, side) {
+    // Backboard
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(hoop.x + (side === 'left' ? -10 : hoop.width), hoop.y - 50, 10, 60);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hoop.x + (side === 'left' ? -10 : hoop.width), hoop.y - 50, 10, 60);
+    
+    // Rim
+    ctx.strokeStyle = '#ff4500';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(hoop.x, hoop.rimY);
+    ctx.lineTo(hoop.x + hoop.width, hoop.rimY);
+    ctx.stroke();
+    
+    // Net
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hoop.x + i * (hoop.width / 4), hoop.rimY);
+        ctx.lineTo(hoop.x + hoop.width / 2 + (i - 2) * 5, hoop.rimY + 25);
+        ctx.stroke();
+    }
+    
+    // Pole
+    ctx.fillStyle = '#666';
+    ctx.fillRect(hoop.x + (side === 'left' ? -15 : hoop.width + 5), hoop.rimY, 10, GROUND_Y - hoop.rimY);
+}
+
 function drawGame() {
     const mode = getModeSettings();
-    const netTop = GROUND_Y - mode.netHeight;
+    const netTop = GROUND_Y - (mode.netHeight || 0);
 
     // Sky
-    let grad = ctx.createLinearGradient(0, 0, 0, H);
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, mode.skyColors[0]);
     grad.addColorStop(1, mode.skyColors[1]);
     ctx.fillStyle = grad;
@@ -1660,7 +1705,29 @@ function drawGame() {
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
     
     // Court markings
-    if (activeMode === 'tennis') {
+    if (activeMode === 'basketball') {
+        // Basketball court
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        // Center circle
+        ctx.beginPath();
+        ctx.arc(W/2, GROUND_Y, 60, Math.PI, 0);
+        ctx.stroke();
+        // Three point lines
+        ctx.beginPath();
+        ctx.arc(hoops.left.x + hoops.left.width/2, GROUND_Y, 180, Math.PI, 0);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(hoops.right.x + hoops.right.width/2, GROUND_Y, 180, Math.PI, 0);
+        ctx.stroke();
+        // Key areas
+        ctx.strokeRect(20, GROUND_Y - 100, 120, 100);
+        ctx.strokeRect(W - 140, GROUND_Y - 100, 120, 100);
+        
+        // Hoops
+        drawHoop(hoops.left, 'left');
+        drawHoop(hoops.right, 'right');
+    } else if (activeMode === 'tennis') {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -1671,10 +1738,6 @@ function drawGame() {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(50, GROUND_Y, W - 100, 50);
-        ctx.beginPath();
-        ctx.moveTo(NET_X, GROUND_Y);
-        ctx.lineTo(NET_X, GROUND_Y + 50);
-        ctx.stroke();
     } else {
         ctx.strokeStyle = 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 2;
@@ -1686,54 +1749,58 @@ function drawGame() {
         ctx.setLineDash([]);
     }
 
-    // Net
-    ctx.fillStyle = activeMode === 'badminton' ? '#555' : '#333';
-    ctx.fillRect(NET_X - 4, netTop, 8, mode.netHeight);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(NET_X - 8, netTop - 5, 16, 10);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 1;
-    for (let ny = netTop + 12; ny < GROUND_Y; ny += 12) {
-        ctx.beginPath();
-        ctx.moveTo(NET_X - 4, ny);
-        ctx.lineTo(NET_X + 4, ny);
-        ctx.stroke();
+    // Net (not for basketball)
+    if (activeMode !== 'basketball' && mode.netHeight > 0) {
+        ctx.fillStyle = activeMode === 'badminton' ? '#555' : '#333';
+        ctx.fillRect(NET_X - 4, netTop, 8, mode.netHeight);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(NET_X - 8, netTop - 5, 16, 10);
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        for (let ny = netTop + 12; ny < GROUND_Y; ny += 12) {
+            ctx.beginPath();
+            ctx.moveTo(NET_X - 4, ny);
+            ctx.lineTo(NET_X + 4, ny);
+            ctx.stroke();
+        }
     }
 
-    // Hit range indicator
-    let pDist = ballCenter(player);
-    if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
-        ctx.beginPath();
-        ctx.arc(player.x + player.w/2, player.y + player.h/2, HIT_RANGE, 0, Math.PI * 2);
-        ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.15)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    // Hit range indicator (not for basketball)
+    if (activeMode !== 'basketball') {
+        const pDist = ballCenter(player);
+        if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
+            ctx.beginPath();
+            ctx.arc(player.x + player.w/2, player.y + player.h/2, HIT_RANGE, 0, Math.PI * 2);
+            ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
     }
 
-    // Draw players with hands
+    // Draw players
     drawPlayer(player, mode, false, 'YOU');
     drawPlayer(opponent, mode, true, gameMode === 'solo' ? 'AI' : 'P2');
 
     // Ball shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.beginPath();
-    ctx.ellipse(ball.x, GROUND_Y + 2, ball.r * 0.7, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (!ball.holder) {
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.beginPath();
+        ctx.ellipse(ball.x, GROUND_Y + 2, ball.r * 0.7, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
-    // Ball / Shuttlecock
+    // Ball
     if (activeMode === 'badminton') {
-        let angle = Math.atan2(ball.vy, ball.vx);
+        const angle = Math.atan2(ball.vy, ball.vx);
         ctx.save();
         ctx.translate(ball.x, ball.y);
         ctx.rotate(angle);
-        
         ctx.fillStyle = '#f5f5dc';
         ctx.beginPath();
         ctx.arc(0, 0, ball.r * 0.7, 0, Math.PI * 2);
         ctx.fill();
-        
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.moveTo(-ball.r * 0.5, 0);
@@ -1742,16 +1809,30 @@ function drawGame() {
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
         ctx.stroke();
-        
         ctx.restore();
+    } else if (activeMode === 'basketball') {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fillStyle = mode.ballColor;
+        ctx.fill();
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Basketball lines
+        ctx.beginPath();
+        ctx.moveTo(ball.x - ball.r, ball.y);
+        ctx.lineTo(ball.x + ball.r, ball.y);
+        ctx.moveTo(ball.x, ball.y - ball.r);
+        ctx.lineTo(ball.x, ball.y + ball.r);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
     } else {
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
         ctx.fillStyle = mode.ballColor;
         ctx.fill();
-        
         if (activeMode === 'tennis') {
             ctx.strokeStyle = '#9acd32';
             ctx.lineWidth = 2;
@@ -1761,12 +1842,6 @@ function drawGame() {
         } else {
             ctx.strokeStyle = '#999';
             ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(ball.x - ball.r * 0.5, ball.y);
-            ctx.quadraticCurveTo(ball.x, ball.y + ball.r * 0.5, ball.x + ball.r * 0.5, ball.y);
-            ctx.strokeStyle = '#ddd';
-            ctx.lineWidth = 1;
             ctx.stroke();
         }
     }
@@ -1787,7 +1862,10 @@ function drawGame() {
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(W/2 - 180, H/2 - 80, 360, 75);
 
-        if (ball.x < NET_X) {
+        if (activeMode === 'basketball') {
+            ctx.fillStyle = playerScore >= 21 ? '#77ff77' : '#ff7777';
+            ctx.fillText(playerScore >= 21 ? 'You Win!' : 'AI Wins!', W/2, H/2 - 42);
+        } else if (ball.x < NET_X) {
             ctx.fillStyle = '#ff7777';
             ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W/2, H/2 - 42);
         } else {
@@ -1801,17 +1879,26 @@ function drawGame() {
     }
 
     // Action hints
-    if (gameState === 'playing' && pDist < HIT_RANGE) {
+    if (gameState === 'playing' && activeMode !== 'basketball') {
+        const pDist = ballCenter(player);
+        if (pDist < HIT_RANGE) {
+            ctx.textAlign = 'center';
+            ctx.font = '13px monospace';
+            ctx.fillStyle = 'rgba(255,255,220,0.95)';
+            if (!player.onGround) ctx.fillText('CLICK to SMASH!', W/2, H - 12);
+            else if (activeMode === 'volleyball') ctx.fillText('Q = Set | CLICK = Bump', W/2, H - 12);
+            else ctx.fillText('CLICK = Hit', W/2, H - 12);
+            ctx.textAlign = 'left';
+        }
+    }
+    
+    // Basketball hints
+    if (gameState === 'playing' && activeMode === 'basketball') {
         ctx.textAlign = 'center';
         ctx.font = '13px monospace';
         ctx.fillStyle = 'rgba(255,255,220,0.95)';
-        if (!player.onGround) {
-            ctx.fillText('CLICK to SMASH!', W/2, H - 12);
-        } else if (activeMode === 'volleyball') {
-            ctx.fillText('Q = Set  |  CLICK = Bump', W/2, H - 12);
-        } else {
-            ctx.fillText('CLICK = Hit', W/2, H - 12);
-        }
+        if (player.hasBall) ctx.fillText('RIGHT CLICK to SHOOT!', W/2, H - 12);
+        else if (ballCenter(player) < HIT_RANGE + 20) ctx.fillText('CLICK to grab ball', W/2, H - 12);
         ctx.textAlign = 'left';
     }
 }
@@ -1819,11 +1906,14 @@ function drawGame() {
 // ==================== GAME LOOP ====================
 let lastTime = 0;
 const TICK_RATE = 1000 / 60;
+let frameSkip = 0;
 
 function gameLoop(timestamp) {
-    if (timestamp - lastTime >= TICK_RATE) {
-        lastTime = timestamp;
-
+    const delta = timestamp - lastTime;
+    
+    if (delta >= TICK_RATE) {
+        lastTime = timestamp - (delta % TICK_RATE);
+        
         if (gameState === 'playing' || gameState === 'roundOver') {
             updatePlayer();
             updateOpponent();
@@ -1843,6 +1933,7 @@ function gameLoop(timestamp) {
         }
 
         clickedThisFrame = false;
+        rightClickedThisFrame = false;
         setPressed = false;
     }
 
