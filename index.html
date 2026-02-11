@@ -532,7 +532,7 @@ const GRAVITY = 0.35;
 const HIT_RANGE = 90;
 
 // Game settings
-let selectedMode = 'volleyball'; // 'volleyball', 'tennis', 'badminton'
+let selectedMode = 'volleyball';
 let activeMode = 'volleyball';
 
 // Mode-specific settings
@@ -586,6 +586,7 @@ let serveSide = 'player';
 let gameState = 'menu';
 let roundTimer = 0;
 let gameMode = 'solo';
+let pointScored = false; // Flag to prevent multiple score calls
 
 // Touch tracking
 let playerTouches = 0;
@@ -1099,7 +1100,8 @@ const opponent = {
     vx: 0, vy: 0, speed: 3.5, jumpPower: -9,
     onGround: true,
     actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
-    personality: 0, lastDecision: 0, mistakeChance: 0
+    personality: 0, lastDecision: 0, mistakeChance: 0,
+    pendingAction: null, actionTimer: 0
 };
 
 const ball = {
@@ -1116,8 +1118,8 @@ function updateScoreDisplay() {
     let touchText = '';
     if (activeMode === 'volleyball') {
         touchText = `Touches: You ${playerTouches}/${mode.maxTouches} | Opp ${opponentTouches}/${mode.maxTouches}`;
-    } else {
-        touchText = mode.allowBounce ? `Bounces: ${ball.bounceCount}/1` : '';
+    } else if (mode.allowBounce) {
+        touchText = `Bounces: ${ball.bounceCount}/1`;
     }
     document.getElementById('touchIndicator').textContent = touchText;
 }
@@ -1131,6 +1133,8 @@ function resetRound() {
     opponent.hitCount = 0;
     opponent.personality = Math.random();
     opponent.mistakeChance = 0.08 + Math.random() * 0.07;
+    opponent.pendingAction = null;
+    opponent.actionTimer = 0;
 
     ball.vy = 0;
     ball.vx = 0;
@@ -1141,6 +1145,7 @@ function resetRound() {
     playerTouches = 0;
     opponentTouches = 0;
     lastTouchSide = null;
+    pointScored = false;
     
     if (serveSide === 'player') {
         ball.x = 220; ball.y = 140;
@@ -1172,11 +1177,12 @@ function capBallSpeed(maxSpd) {
 }
 
 function registerTouch(isPlayer) {
+    if (gameState !== 'playing' || pointScored) return false;
+    
     const mode = getModeSettings();
     const side = isPlayer ? 'player' : 'opponent';
     
     if (lastTouchSide !== side) {
-        // Ball changed sides, reset touches
         if (isPlayer) {
             playerTouches = 1;
         } else {
@@ -1196,7 +1202,7 @@ function registerTouch(isPlayer) {
     
     // Check for too many touches
     if (isPlayer && playerTouches > mode.maxTouches) {
-        return false; // Fault
+        return false;
     }
     if (!isPlayer && opponentTouches > mode.maxTouches) {
         return false;
@@ -1206,6 +1212,7 @@ function registerTouch(isPlayer) {
 }
 
 function doSet(rect, direction) {
+    if (gameState !== 'playing' || pointScored) return false;
     if (activeMode !== 'volleyball') return doHit(rect, direction);
     if (ballCenter(rect) > HIT_RANGE) return false;
     
@@ -1225,6 +1232,7 @@ function doSet(rect, direction) {
 }
 
 function doHit(rect, direction) {
+    if (gameState !== 'playing' || pointScored) return false;
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
@@ -1244,6 +1252,7 @@ function doHit(rect, direction) {
 }
 
 function doSmash(rect, direction) {
+    if (gameState !== 'playing' || pointScored) return false;
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
@@ -1299,12 +1308,12 @@ function updatePlayer() {
         player.onGround = false;
     }
 
-    if (setPressed && activeMode === 'volleyball') {
+    if (setPressed && activeMode === 'volleyball' && gameState === 'playing') {
         setPressed = false;
         doSet(player, 1);
     }
 
-    if (clickedThisFrame) {
+    if (clickedThisFrame && gameState === 'playing') {
         if (!player.onGround && ball.y < player.y + 20) {
             doSmash(player, 1);
         } else {
@@ -1334,11 +1343,11 @@ function updateOpponent() {
             opponent.vy = opponent.jumpPower;
             opponent.onGround = false;
         }
-        if (remoteInput.set && activeMode === 'volleyball') {
+        if (remoteInput.set && activeMode === 'volleyball' && gameState === 'playing') {
             remoteInput.set = false;
             doSet(opponent, -1);
         }
-        if (remoteInput.click) {
+        if (remoteInput.click && gameState === 'playing') {
             remoteInput.click = false;
             if (!opponent.onGround && ball.y < opponent.y + 20) {
                 doSmash(opponent, -1);
@@ -1365,6 +1374,14 @@ function updateOpponent() {
 }
 
 function updateAI() {
+    // Don't process AI during round over
+    if (gameState !== 'playing' || pointScored) {
+        opponent.vx = 0;
+        opponent.pendingAction = null;
+        opponent.actionTimer = 0;
+        return;
+    }
+    
     const mode = getModeSettings();
     const netTop = GROUND_Y - mode.netHeight;
     
@@ -1374,6 +1391,7 @@ function updateAI() {
     let ballOnMySide = ball.x > NET_X;
     let distToB = ballCenter(opponent);
 
+    // Predict where ball will land
     let predictX = ball.x;
     let predictY = ball.y;
     let pvx = ball.vx;
@@ -1386,6 +1404,7 @@ function updateAI() {
         if (predictY >= GROUND_Y - 20) break;
     }
 
+    // Decision making for positioning
     if (opponent.lastDecision > 25 + Math.random() * 15) {
         opponent.lastDecision = 0;
         
@@ -1406,6 +1425,7 @@ function updateAI() {
 
     opponent.targetX = clamp(opponent.targetX, NET_X + 12, W - opponent.w - 12);
 
+    // Movement
     let diff = opponent.targetX - opponent.x;
     let moveThreshold = 8 + Math.random() * 5;
     
@@ -1416,69 +1436,89 @@ function updateAI() {
         opponent.vx = 0;
     }
 
-    if (ballOnMySide && opponent.actionCooldown <= 0) {
+    // Handle pending action with timer (instead of setTimeout)
+    if (opponent.pendingAction && opponent.actionTimer > 0) {
+        opponent.actionTimer--;
+        if (opponent.actionTimer <= 0 && gameState === 'playing' && !pointScored) {
+            let action = opponent.pendingAction;
+            opponent.pendingAction = null;
+            
+            if (action === 'jump' && opponent.onGround) {
+                opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
+                opponent.onGround = false;
+            } else if (action === 'smash') {
+                if (doSmash(opponent, -1)) {
+                    opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
+                    opponent.hitCount = 0;
+                }
+            } else if (action === 'set') {
+                if (doSet(opponent, -1)) {
+                    opponent.actionCooldown = 10 + Math.floor(Math.random() * 6);
+                    opponent.hitCount = 1;
+                }
+            } else if (action === 'hit') {
+                if (doHit(opponent, -1)) {
+                    opponent.actionCooldown = 15 + Math.floor(Math.random() * 10);
+                    opponent.hitCount = 0;
+                }
+            }
+        }
+    }
+
+    // Decision making for actions
+    if (ballOnMySide && opponent.actionCooldown <= 0 && !opponent.pendingAction) {
         let ballComingDown = ball.vy > 0;
         let ballNear = distToB < HIT_RANGE + 25;
         let ballAbove = ball.y < opponent.y;
         let ballHigh = ball.y < netTop - 20;
 
+        // Jump decision
         if (ballAbove && ballComingDown && distToB < 180 && opponent.onGround) {
             let shouldJump = ball.y < netTop + 100;
-            if (shouldJump && Math.random() > 0.15) {
-                setTimeout(() => {
-                    if (opponent.onGround) {
-                        opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
-                        opponent.onGround = false;
-                    }
-                }, Math.floor(Math.random() * 6) * 16);
+            if (shouldJump && Math.random() > 0.15 && !opponent.pendingAction) {
+                opponent.pendingAction = 'jump';
+                opponent.actionTimer = Math.floor(Math.random() * 6) + 1;
             }
         }
 
-        if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
-            setTimeout(() => {
-                if (opponent.actionCooldown > 0) return;
-                
-                if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
-                    if (Math.random() > 0.2) {
-                        if (doSmash(opponent, -1)) {
-                            opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
-                            opponent.hitCount = 0;
-                        }
-                    }
+        // Hit decision
+        if (ballNear && (ballAbove || ball.y < opponent.y + 30) && !opponent.pendingAction) {
+            if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
+                if (Math.random() > 0.2) {
+                    opponent.pendingAction = 'smash';
+                    opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
                 }
-                else if (activeMode === 'volleyball' && opponent.hitCount === 0 && ballComingDown) {
-                    if (Math.random() > 0.3) {
-                        if (doSet(opponent, -1)) {
-                            opponent.actionCooldown = 10 + Math.floor(Math.random() * 6);
-                            opponent.hitCount = 1;
-                        }
-                    }
+            } else if (activeMode === 'volleyball' && opponent.hitCount === 0 && ballComingDown) {
+                if (Math.random() > 0.3) {
+                    opponent.pendingAction = 'set';
+                    opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
                 }
-                else {
-                    if (doHit(opponent, -1)) {
-                        opponent.actionCooldown = 15 + Math.floor(Math.random() * 10);
-                        opponent.hitCount = 0;
-                    }
-                }
-            }, Math.floor(Math.random() * 4) * 16);
+            } else if (ballComingDown) {
+                opponent.pendingAction = 'hit';
+                opponent.actionTimer = Math.floor(Math.random() * 4) + 1;
+            }
         }
 
-        if (ballNear && ball.y > netTop + 50 && ballComingDown && opponent.actionCooldown <= 0) {
-            if (doHit(opponent, -1)) {
-                opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
-                opponent.hitCount = 0;
-            }
+        // Emergency hit when ball is low
+        if (ballNear && ball.y > netTop + 50 && ballComingDown && !opponent.pendingAction) {
+            opponent.pendingAction = 'hit';
+            opponent.actionTimer = 1;
         }
     }
 
+    // Reset hit count when ball goes to other side
     if (!ballOnMySide) {
         opponent.hitCount = 0;
+        opponent.pendingAction = null;
+        opponent.actionTimer = 0;
     }
 }
 
 // ==================== BALL ====================
 function updateBall() {
     if (gameMode === 'client') return;
+    if (gameState !== 'playing') return;
+    if (pointScored) return;
 
     const mode = getModeSettings();
     const netTop = GROUND_Y - mode.netHeight;
@@ -1492,6 +1532,7 @@ function updateBall() {
 
     capBallSpeed(14);
 
+    // Wall collisions
     if (ball.x - ball.r < 0) {
         ball.x = ball.r;
         ball.vx = Math.abs(ball.vx) * 0.7;
@@ -1529,7 +1570,7 @@ function updateBall() {
     }
     if (hitNet) playSound('net');
 
-    // Check ball crossing sides - reset touch count
+    // Reset touches when ball crosses net
     let currentSide = ball.x < NET_X ? 'player' : 'opponent';
     if (lastTouchSide && currentSide !== lastTouchSide) {
         if (currentSide === 'player') {
@@ -1553,7 +1594,7 @@ function updateBall() {
     }
 
     // Ground - scoring
-    if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
+    if (ball.y + ball.r >= GROUND_Y) {
         if (mode.allowBounce && ball.bounceCount < 1) {
             ball.bounceCount++;
             ball.y = GROUND_Y - ball.r;
@@ -1569,8 +1610,16 @@ function updateBall() {
 }
 
 function scorePoint(playerScored) {
+    if (pointScored || gameState !== 'playing') return;
+    
+    pointScored = true;
     gameState = 'roundOver';
     roundTimer = 100;
+
+    // Stop ball movement
+    ball.vy = 0;
+    ball.vx = 0;
+    ball.y = Math.min(ball.y, GROUND_Y - ball.r);
 
     if (playerScored) {
         playerScore++;
@@ -1583,9 +1632,6 @@ function scorePoint(playerScored) {
     }
     
     updateScoreDisplay();
-    ball.vy = 0;
-    ball.vx = 0;
-    ball.y = GROUND_Y - ball.r;
 }
 
 // ==================== DRAWING ====================
@@ -1699,7 +1745,6 @@ function drawGame() {
 
     // Ball / Shuttlecock
     if (activeMode === 'badminton') {
-        // Shuttlecock
         let angle = Math.atan2(ball.vy, ball.vx);
         ctx.save();
         ctx.translate(ball.x, ball.y);
