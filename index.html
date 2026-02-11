@@ -3,19 +3,188 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2D Volleyball</title>
+<title>Cool Games</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: monospace; user-select: none; }
-canvas { border: 2px solid #444; cursor: crosshair; }
-#score { color: #fff; font-size: 28px; margin-bottom: 10px; letter-spacing: 8px; }
-#info { color: #aaa; margin-top: 10px; font-size: 13px; text-align: center; line-height: 1.8; }
+body { 
+    background: linear-gradient(180deg, #e8f4fc 0%, #c5dff8 50%, #a8d4f0 100%);
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    height: 100vh; 
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+    overflow: hidden;
+}
+
+#menuScreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+}
+
+.menu-panel {
+    background: linear-gradient(180deg, #ffffff 0%, #f0f5fa 100%);
+    padding: 60px 100px;
+    border-radius: 40px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1), inset 0 2px 0 rgba(255,255,255,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
+    border-radius: 40px 40px 0 0;
+    pointer-events: none;
+}
+
+#menuTitle {
+    font-size: 64px;
+    font-weight: 900;
+    background: linear-gradient(180deg, #5ab4e8 0%, #3a8fc9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    margin-bottom: 50px;
+    letter-spacing: -1px;
+    position: relative;
+    z-index: 1;
+}
+
+#startButton {
+    width: 240px;
+    height: 85px;
+    background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 100%);
+    border: none;
+    border-radius: 42px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: #5a5a5a;
+    cursor: pointer;
+    box-shadow: 0 8px 0 #c8c8c8, 0 12px 30px rgba(0,0,0,0.12);
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+#startButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 45%;
+    background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+    border-radius: 42px 42px 50% 50%;
+    pointer-events: none;
+}
+
+#startButton:hover {
+    background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%);
+    color: #fff;
+    box-shadow: 0 8px 0 #0ea5e9, 0 12px 30px rgba(0,0,0,0.18);
+    transform: scale(1.02);
+}
+
+#startButton:active {
+    transform: translateY(6px) scale(1);
+    box-shadow: 0 2px 0 #0ea5e9, 0 4px 15px rgba(0,0,0,0.12);
+}
+
+#gameContainer {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+
+#score { 
+    color: #4a4a4a;
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 15px;
+    background: linear-gradient(180deg, #ffffff 0%, #f0f5fa 100%);
+    padding: 12px 40px;
+    border-radius: 30px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1), inset 0 2px 0 rgba(255,255,255,1);
+    letter-spacing: 8px;
+}
+
+canvas { 
+    border-radius: 25px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    cursor: crosshair;
+}
+
+#info { 
+    color: #5a5a5a;
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.8;
+    background: linear-gradient(180deg, #ffffff 0%, #f0f5fa 100%);
+    padding: 12px 25px;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+/* Floating bubbles decoration */
+.bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 100%);
+    animation: floatBubble 8s ease-in-out infinite;
+}
+
+@keyframes floatBubble {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    25% { transform: translateY(-15px) translateX(10px); }
+    50% { transform: translateY(-25px) translateX(-5px); }
+    75% { transform: translateY(-10px) translateX(15px); }
+}
 </style>
 </head>
 <body>
-<div id="score">0 - 0</div>
-<canvas id="game" width="800" height="450"></canvas>
-<div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike</div>
+
+<!-- Decorative bubbles -->
+<div class="bubble" style="width: 80px; height: 80px; top: 10%; left: 5%; animation-delay: 0s;"></div>
+<div class="bubble" style="width: 50px; height: 50px; top: 20%; right: 10%; animation-delay: 1s;"></div>
+<div class="bubble" style="width: 100px; height: 100px; bottom: 15%; left: 8%; animation-delay: 2s;"></div>
+<div class="bubble" style="width: 60px; height: 60px; bottom: 25%; right: 5%; animation-delay: 3s;"></div>
+<div class="bubble" style="width: 40px; height: 40px; top: 40%; left: 3%; animation-delay: 4s;"></div>
+
+<div id="menuScreen">
+    <div class="menu-panel">
+        <div id="menuTitle">Cool Games</div>
+        <button id="startButton">▶ Start</button>
+    </div>
+</div>
+
+<div id="gameContainer">
+    <div id="score">0 - 0</div>
+    <canvas id="game" width="800" height="450"></canvas>
+    <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike</div>
+</div>
 
 <script>
 const canvas = document.getElementById('game');
@@ -23,9 +192,9 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width;
 const H = canvas.height;
 
-const GROUND_Y = H - 40;
+const GROUND_Y = H - 50;
 const NET_X = W / 2;
-const NET_HEIGHT = 120;
+const NET_HEIGHT = 130;
 const NET_TOP = GROUND_Y - NET_HEIGHT;
 const GRAVITY = 0.32;
 const BALL_GRAVITY = 0.20;
@@ -40,7 +209,7 @@ let roundTimer = 0;
 const keys = {};
 let clickedThisFrame = false;
 
-// ==================== SOUND EFFECTS ====================
+// ==================== WII SOUND EFFECTS ====================
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) {
@@ -57,87 +226,110 @@ function playSound(type) {
   const now = audioCtx.currentTime;
 
   switch(type) {
+    case 'menuClick':
+      // Wii button click sound
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+      // Second tone
+      const osc1b = audioCtx.createOscillator();
+      const gain1b = audioCtx.createGain();
+      osc1b.connect(gain1b);
+      gain1b.connect(audioCtx.destination);
+      osc1b.type = 'sine';
+      osc1b.frequency.setValueAtTime(1600, now + 0.02);
+      gain1b.gain.setValueAtTime(0.08, now + 0.02);
+      gain1b.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc1b.start(now + 0.02);
+      osc1b.stop(now + 0.15);
+      break;
+    case 'menuHover':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.start(now);
+      osc.stop(now + 0.06);
+      break;
     case 'set':
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(500, now);
-      osc.frequency.exponentialRampToValueAtTime(700, now + 0.1);
-      gain.gain.setValueAtTime(0.15, now);
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+      gain.gain.setValueAtTime(0.12, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc.start(now);
       osc.stop(now + 0.15);
       break;
     case 'bump':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
+      break;
+    case 'spike':
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(300, now);
-      osc.frequency.exponentialRampToValueAtTime(500, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.06);
       gain.gain.setValueAtTime(0.2, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
       osc.start(now);
       osc.stop(now + 0.2);
       break;
-    case 'spike':
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(200, now);
-      osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.start(now);
-      osc.stop(now + 0.18);
-      // Add a second pop
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(150, now);
-      gain2.gain.setValueAtTime(0.12, now);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      osc2.start(now);
-      osc2.stop(now + 0.1);
-      break;
     case 'score':
+      // Wii celebration sound
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((freq, i) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(freq, now + i * 0.1);
+        g.gain.setValueAtTime(0.12, now + i * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.2);
+        o.start(now + i * 0.1);
+        o.stop(now + i * 0.1 + 0.2);
+      });
+      return;
+    case 'lose':
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523, now);
-      osc.frequency.setValueAtTime(659, now + 0.12);
-      osc.frequency.setValueAtTime(784, now + 0.24);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.setValueAtTime(0.2, now + 0.3);
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.4);
+      gain.gain.setValueAtTime(0.15, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
       osc.start(now);
       osc.stop(now + 0.5);
       break;
-    case 'lose':
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.3);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-      osc.start(now);
-      osc.stop(now + 0.4);
-      break;
     case 'net':
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(180, now);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc.start(now);
-      osc.stop(now + 0.12);
-      break;
-    case 'bounce':
       osc.type = 'sine';
       osc.frequency.setValueAtTime(250, now);
-      osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
       gain.gain.setValueAtTime(0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
       osc.start(now);
       osc.stop(now + 0.1);
       break;
+    case 'bounce':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.06);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+      break;
     case 'whistle':
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.setValueAtTime(1000, now + 0.1);
-      osc.frequency.setValueAtTime(800, now + 0.2);
-      gain.gain.setValueAtTime(0.15, now);
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.setValueAtTime(1100, now + 0.1);
+      osc.frequency.setValueAtTime(900, now + 0.2);
+      gain.gain.setValueAtTime(0.1, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
       osc.start(now);
       osc.stop(now + 0.35);
@@ -148,40 +340,50 @@ function playSound(type) {
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
-  if (gameState === 'menu' && (e.key === 'Enter' || e.key === ' ')) {
-    initAudio();
-    startGame();
-  }
   e.preventDefault();
 });
 document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 canvas.addEventListener('mousedown', e => {
   initAudio();
-  if (gameState === 'menu') {
-    startGame();
-  } else {
-    clickedThisFrame = true;
-  }
+  clickedThisFrame = true;
+});
+
+// Menu button handlers
+const startButton = document.getElementById('startButton');
+startButton.addEventListener('mouseenter', () => {
+  initAudio();
+  playSound('menuHover');
+});
+startButton.addEventListener('click', () => {
+  initAudio();
+  playSound('menuClick');
+  setTimeout(() => {
+    document.getElementById('menuScreen').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'flex';
+    gameState = 'playing';
+    playSound('whistle');
+    resetRound();
+  }, 200);
 });
 
 // ==================== ENTITIES ====================
 const player = {
-  x: 150, y: GROUND_Y - 50, w: 50, h: 50,
+  x: 150, y: GROUND_Y - 60, w: 50, h: 60,
   vx: 0, vy: 0, speed: 3.2, jumpPower: -7.5,
-  onGround: true, color: '#3366ff', facingRight: true
+  onGround: true, color: '#3b82f6', facingRight: true
 };
 
 const ai = {
-  x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
+  x: W - 200, y: GROUND_Y - 60, w: 50, h: 60,
   vx: 0, vy: 0, speed: 3.0, jumpPower: -7.5,
-  onGround: true, color: '#ff4444',
+  onGround: true, color: '#ef4444',
   actionCooldown: 0, hitCount: 0, phase: 'idle'
 };
 
 const ball = {
-  x: 200, y: 150, r: 14,
+  x: 200, y: 150, r: 16,
   vx: 0, vy: 0, color: '#fff',
-  lastHitBy: null
+  lastHitBy: null, rotation: 0
 };
 
 // ==================== GAME LOGIC ====================
@@ -190,7 +392,6 @@ function startGame() {
   playerScore = 0;
   aiScore = 0;
   serveSide = 'player';
-  playSound('whistle');
   resetRound();
 }
 
@@ -204,6 +405,7 @@ function resetRound() {
   ball.vy = 0;
   ball.vx = 0;
   ball.lastHitBy = null;
+  ball.rotation = 0;
   if (serveSide === 'player') {
     ball.x = 200; ball.y = 130;
   } else {
@@ -233,7 +435,6 @@ function capBallSpeed(maxSpd) {
   }
 }
 
-// Set: straight up, no forward movement
 function doSet(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
   ball.vx = 0;
@@ -243,7 +444,6 @@ function doSet(rect, direction) {
   return true;
 }
 
-// Bump: strong forward + up, sends it over the net
 function doBump(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
   ball.vx = direction * 7;
@@ -254,7 +454,6 @@ function doBump(rect, direction) {
   return true;
 }
 
-// Spike: fast forward and downward
 function doSpike(rect, direction) {
   if (ballCenter(rect) > HIT_RANGE) return false;
   ball.vx = direction * 7;
@@ -327,7 +526,6 @@ function updateAI() {
   let ballOnMySide = ball.x > NET_X;
   let distToB = ballCenter(ai);
 
-  // Predict where ball will land
   let predictX = ball.x;
   let predictY = ball.y;
   let pvx = ball.vx;
@@ -341,20 +539,15 @@ function updateAI() {
 
   let targetX;
   if (ballOnMySide) {
-    // Position under where ball will be
     if (ball.vy > 0 && ball.y > NET_TOP - 50) {
-      // Ball coming down, get right under it
       targetX = ball.x - ai.w / 2;
     } else {
-      // Ball going up or far away, move toward predicted landing
       targetX = predictX - ai.w / 2;
     }
   } else {
-    // Ball on player side, return to center of our side
     targetX = W * 0.72 - ai.w / 2;
   }
 
-  // Clamp target to AI's allowed area
   targetX = clamp(targetX, NET_X + 5, W - ai.w);
 
   let diff = targetX - ai.x;
@@ -364,32 +557,25 @@ function updateAI() {
     ai.vx = 0;
   }
 
-  // AI decision-making
   if (ballOnMySide && ai.actionCooldown <= 0) {
     let ballComingDown = ball.vy > 0;
     let ballNear = distToB < HIT_RANGE + 15;
     let ballAbove = ball.y < ai.y;
-    let ballClose = Math.abs(ball.x - (ai.x + ai.w/2)) < 60;
 
-    // Jump logic - jump when ball is coming down toward us and is above
     if (ballAbove && ballComingDown && distToB < 140 && ai.onGround) {
-      // Jump if ball is high enough that we need to
       if (ball.y < NET_TOP + 60) {
         ai.vy = ai.jumpPower;
         ai.onGround = false;
       }
     }
 
-    // Hit the ball
     if (ballNear && ballAbove) {
       if (ai.hitCount === 0 && ballComingDown) {
-        // First touch: SET it straight up
         if (doSet(ai, -1)) {
           ai.actionCooldown = 15;
           ai.hitCount = 1;
         }
       } else if (ai.hitCount >= 1) {
-        // Second touch: BUMP it over or SPIKE
         if (!ai.onGround && ball.y < NET_TOP + 40) {
           if (doSpike(ai, -1)) {
             ai.actionCooldown = 25;
@@ -404,7 +590,6 @@ function updateAI() {
       }
     }
 
-    // Fallback: if ball has been on our side a while and is near, just bump it
     if (ballNear && ballComingDown && ai.actionCooldown <= 0 && ball.y > NET_TOP) {
       if (doBump(ai, -1)) {
         ai.actionCooldown = 25;
@@ -413,7 +598,6 @@ function updateAI() {
     }
   }
 
-  // Reset hit count when ball goes to other side
   if (!ballOnMySide) {
     ai.hitCount = 0;
   }
@@ -435,10 +619,10 @@ function updateBall() {
   ball.vy += BALL_GRAVITY;
   ball.x += ball.vx;
   ball.y += ball.vy;
+  ball.rotation += ball.vx * 0.05;
 
   capBallSpeed(11);
 
-  // Walls
   if (ball.x - ball.r < 0) {
     ball.x = ball.r;
     ball.vx = Math.abs(ball.vx) * 0.7;
@@ -449,14 +633,12 @@ function updateBall() {
     ball.vx = -Math.abs(ball.vx) * 0.7;
     playSound('bounce');
   }
-  // Ceiling
   if (ball.y - ball.r < 0) {
     ball.y = ball.r;
     ball.vy = Math.abs(ball.vy) * 0.7;
     playSound('bounce');
   }
 
-  // Net collision
   let hitNet = false;
   if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
     if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
@@ -470,7 +652,6 @@ function updateBall() {
       }
     }
   }
-  // Top of net
   if (ball.x > NET_X - 10 && ball.x < NET_X + 10 && ball.y + ball.r > NET_TOP && ball.y < NET_TOP + 6) {
     ball.y = NET_TOP - ball.r;
     ball.vy = -Math.abs(ball.vy) * 0.5;
@@ -478,7 +659,6 @@ function updateBall() {
   }
   if (hitNet) playSound('net');
 
-  // Passive collision with players
   if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
     pushBallOutOfRect(player);
     ball.vy = Math.min(ball.vy, -2);
@@ -490,7 +670,6 @@ function updateBall() {
     playSound('bounce');
   }
 
-  // Ball hits ground - SCORE
   if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
     gameState = 'roundOver';
     roundTimer = 90;
@@ -512,108 +691,159 @@ function updateBall() {
 }
 
 // ==================== DRAWING ====================
-function drawMenu() {
-  let grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#87CEEB');
-  grad.addColorStop(1, '#d4eef7');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.fillStyle = '#5a8f3c';
-  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-
-  ctx.fillStyle = '#333';
-  ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
-
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 48px monospace';
-  ctx.fillStyle = '#1a3a5c';
-  ctx.fillText('VOLLEYBALL', W / 2, 100);
-
-  ctx.font = '18px monospace';
-  ctx.fillStyle = '#333';
-  ctx.fillText('2D Cube Edition', W / 2, 132);
-
-  // Decorative cubes
-  ctx.fillStyle = '#3366ff';
-  ctx.fillRect(W / 2 - 140, GROUND_Y - 50, 50, 50);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(W / 2 - 140 + 30, GROUND_Y - 50 + 12, 10, 10);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(W / 2 - 140 + 34, GROUND_Y - 50 + 16, 4, 4);
-
-  ctx.fillStyle = '#ff4444';
-  ctx.fillRect(W / 2 + 90, GROUND_Y - 50, 50, 50);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(W / 2 + 90 + 10, GROUND_Y - 50 + 12, 10, 10);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(W / 2 + 90 + 12, GROUND_Y - 50 + 16, 4, 4);
-
-  // Ball
+function drawMii(x, y, w, h, color, facingLeft) {
+  // Body (rounded rectangle)
+  ctx.fillStyle = color;
+  const bodyRadius = 12;
   ctx.beginPath();
-  ctx.arc(W / 2, 180, 14, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
+  ctx.roundRect(x, y + h * 0.35, w, h * 0.65, bodyRadius);
   ctx.fill();
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 1.5;
+  
+  // Body shine
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.roundRect(x + 4, y + h * 0.35 + 4, w * 0.3, h * 0.4, 6);
+  ctx.fill();
+
+  // Head (circle)
+  const headRadius = w * 0.45;
+  const headX = x + w / 2;
+  const headY = y + headRadius;
+  
+  // Head gradient
+  const headGrad = ctx.createRadialGradient(headX - 5, headY - 5, 0, headX, headY, headRadius);
+  headGrad.addColorStop(0, '#ffefd5');
+  headGrad.addColorStop(1, '#f5d5b8');
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyes
+  const eyeOffsetX = facingLeft ? -6 : 6;
+  const eyeY = headY - 2;
+  
+  // Eye whites
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(headX + eyeOffsetX - 6, eyeY, 6, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(headX + eyeOffsetX + 6, eyeY, 6, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pupils
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(headX + eyeOffsetX - 5 + (facingLeft ? -1 : 1), eyeY + 1, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(headX + eyeOffsetX + 7 + (facingLeft ? -1 : 1), eyeY + 1, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyebrows
+  ctx.strokeStyle = '#654321';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(headX + eyeOffsetX - 10, eyeY - 10);
+  ctx.lineTo(headX + eyeOffsetX - 2, eyeY - 9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(headX + eyeOffsetX + 2, eyeY - 9);
+  ctx.lineTo(headX + eyeOffsetX + 10, eyeY - 10);
   ctx.stroke();
 
-  // Controls
-  ctx.font = '14px monospace';
-  ctx.fillStyle = '#2a2a2a';
-  let y = 220;
-  ctx.fillText('CONTROLS', W / 2, y); y += 28;
-  ctx.fillStyle = '#444';
-  ctx.fillText('A / D  -  Move', W / 2, y); y += 22;
-  ctx.fillText('W / SPACE  -  Jump', W / 2, y); y += 22;
-  ctx.fillText('Q  -  Set (straight up)', W / 2, y); y += 22;
-  ctx.fillText('CLICK  -  Bump (send it over)', W / 2, y); y += 22;
-  ctx.fillText('JUMP + CLICK  -  Spike!', W / 2, y); y += 40;
+  // Smile
+  ctx.strokeStyle = '#c96';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(headX + eyeOffsetX, eyeY + 12, 6, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
 
-  let alpha = 0.5 + 0.5 * Math.sin(Date.now() / 400);
-  ctx.globalAlpha = alpha;
-  ctx.font = 'bold 20px monospace';
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillText('CLICK or ENTER to START', W / 2, y);
-  ctx.globalAlpha = 1;
-
-  ctx.textAlign = 'left';
+  // Blush
+  ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(headX + eyeOffsetX - 14, eyeY + 8, 5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(headX + eyeOffsetX + 14, eyeY + 8, 5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawGame() {
-  let grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#87CEEB');
-  grad.addColorStop(1, '#d4eef7');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  // Sky gradient (Wii style - cleaner, brighter)
+  let skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  skyGrad.addColorStop(0, '#87CEEB');
+  skyGrad.addColorStop(0.5, '#b5e3f5');
+  skyGrad.addColorStop(1, '#d4f1f9');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, GROUND_Y);
 
-  ctx.fillStyle = '#5a8f3c';
-  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  // Sun
+  ctx.fillStyle = '#fff5d4';
+  ctx.beginPath();
+  ctx.arc(680, 60, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fffaed';
+  ctx.beginPath();
+  ctx.arc(680, 60, 32, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Court line
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]);
+  // Clouds (Wii style)
+  function drawCloud(x, y, scale) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(x, y, 25 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 25 * scale, y - 10 * scale, 20 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 50 * scale, y, 25 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 25 * scale, y + 5 * scale, 18 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawCloud(100, 50, 1);
+  drawCloud(550, 35, 0.8);
+  drawCloud(300, 70, 0.6);
+
+  // Ground (grass with Wii-style gradient)
+  let groundGrad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  groundGrad.addColorStop(0, '#7bc96f');
+  groundGrad.addColorStop(1, '#5a9f4e');
+  ctx.fillStyle = groundGrad;
+  ctx.beginPath();
+  ctx.roundRect(0, GROUND_Y, W, H - GROUND_Y, [0, 0, 15, 15]);
+  ctx.fill();
+
+  // Ground line
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y);
   ctx.lineTo(W, GROUND_Y);
   ctx.stroke();
-  ctx.setLineDash([]);
 
-  // Net
-  ctx.fillStyle = '#333';
-  ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
+  // Net (Wii-style, cleaner)
+  ctx.fillStyle = '#f5f5f5';
+  ctx.beginPath();
+  ctx.roundRect(NET_X - 5, NET_TOP, 10, NET_HEIGHT, 5);
+  ctx.fill();
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Net top
   ctx.fillStyle = '#fff';
-  ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
-  // Net lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.roundRect(NET_X - 12, NET_TOP - 8, 24, 16, 8);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  // Net pattern
+  ctx.strokeStyle = 'rgba(200,200,200,0.5)';
   ctx.lineWidth = 1;
-  for (let ny = NET_TOP + 15; ny < GROUND_Y; ny += 15) {
+  for (let ny = NET_TOP + 20; ny < GROUND_Y; ny += 20) {
     ctx.beginPath();
-    ctx.moveTo(NET_X - 3, ny);
-    ctx.lineTo(NET_X + 3, ny);
+    ctx.moveTo(NET_X - 5, ny);
+    ctx.lineTo(NET_X + 5, ny);
     ctx.stroke();
   }
 
@@ -622,98 +852,137 @@ function drawGame() {
   if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
     ctx.beginPath();
     ctx.arc(player.x + player.w / 2, player.y + player.h / 2, HIT_RANGE, 0, Math.PI * 2);
-    ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
+    let alpha = pDist < HIT_RANGE ? 0.4 : 0.15;
+    ctx.strokeStyle = `rgba(100,200,255,${alpha})`;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 8]);
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
   // Player shadow
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(player.x + 5, GROUND_Y - 3, player.w - 10, 6);
+  ctx.beginPath();
+  ctx.ellipse(player.x + player.w / 2, GROUND_Y + 2, player.w * 0.4, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Player
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-  // Eye white
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(player.x + 30, player.y + 12, 12, 12);
-  // Eye pupil
-  ctx.fillStyle = '#000';
-  ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
+  // Player (Mii-style)
+  drawMii(player.x, player.y, player.w, player.h, player.color, false);
 
   // AI shadow
   ctx.fillStyle = 'rgba(0,0,0,0.1)';
-  ctx.fillRect(ai.x + 5, GROUND_Y - 3, ai.w - 10, 6);
+  ctx.beginPath();
+  ctx.ellipse(ai.x + ai.w / 2, GROUND_Y + 2, ai.w * 0.4, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // AI
-  ctx.fillStyle = ai.color;
-  ctx.fillRect(ai.x, ai.y, ai.w, ai.h);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(ai.x + 8, ai.y + 12, 12, 12);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(ai.x + 10, ai.y + 16, 4, 4);
+  // AI (Mii-style)
+  drawMii(ai.x, ai.y, ai.w, ai.h, ai.color, true);
 
   // Ball shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.beginPath();
-  ctx.ellipse(ball.x, GROUND_Y, ball.r * 0.8, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(ball.x, GROUND_Y + 2, ball.r * 0.7, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ball
+  // Ball (Wii-style volleyball)
+  ctx.save();
+  ctx.translate(ball.x, ball.y);
+  ctx.rotate(ball.rotation);
+  
+  // Ball gradient
+  let ballGrad = ctx.createRadialGradient(-4, -4, 0, 0, 0, ball.r);
+  ballGrad.addColorStop(0, '#ffffff');
+  ballGrad.addColorStop(0.7, '#f0f0f0');
+  ballGrad.addColorStop(1, '#d8d8d8');
+  ctx.fillStyle = ballGrad;
   ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = ball.color;
+  ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#999';
+  
+  // Ball outline
+  ctx.strokeStyle = '#bbb';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Ball pattern
+  ctx.strokeStyle = '#ccc';
   ctx.lineWidth = 1.5;
-  ctx.stroke();
-  // Ball seam
   ctx.beginPath();
-  ctx.moveTo(ball.x - 7, ball.y);
-  ctx.quadraticCurveTo(ball.x, ball.y + 7, ball.x + 7, ball.y);
-  ctx.strokeStyle = '#ddd';
-  ctx.lineWidth = 1;
+  ctx.arc(0, 0, ball.r * 0.6, 0, Math.PI * 2);
   ctx.stroke();
+  
+  // Ball lines
+  ctx.beginPath();
+  ctx.moveTo(-ball.r, 0);
+  ctx.lineTo(ball.r, 0);
+  ctx.moveTo(0, -ball.r);
+  ctx.lineTo(0, ball.r);
+  ctx.stroke();
+  
+  ctx.restore();
 
-  // Labels
-  ctx.font = '13px monospace';
+  // Labels (Wii-style rounded boxes)
+  ctx.font = 'bold 12px Nunito, sans-serif';
+  
+  // Player label
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.9)';
+  ctx.beginPath();
+  ctx.roundRect(player.x + player.w/2 - 22, player.y - 24, 44, 18, 9);
+  ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.fillText('YOU', player.x + 8, player.y - 8);
-  ctx.fillStyle = '#fcc';
-  ctx.fillText('AI', ai.x + 16, ai.y - 8);
+  ctx.textAlign = 'center';
+  ctx.fillText('YOU', player.x + player.w / 2, player.y - 11);
+  
+  // AI label
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+  ctx.beginPath();
+  ctx.roundRect(ai.x + ai.w/2 - 16, ai.y - 24, 32, 18, 9);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('CPU', ai.x + ai.w / 2, ai.y - 11);
+  ctx.textAlign = 'left';
 
-  // Round over
+  // Round over message
   if (gameState === 'roundOver') {
     ctx.textAlign = 'center';
-    ctx.font = 'bold 28px monospace';
+    
+    // Message box
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 140, H / 2 - 60, 280, 80, 20);
+    ctx.fill();
+    ctx.strokeStyle = ball.x < NET_X ? '#ef4444' : '#22c55e';
+    ctx.lineWidth = 4;
+    ctx.stroke();
 
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(W / 2 - 160, H / 2 - 70, 320, 65);
-
+    ctx.font = 'bold 26px Nunito, sans-serif';
     if (ball.x < NET_X) {
-      ctx.fillStyle = '#ff6666';
-      ctx.fillText('AI Scores!', W / 2, H / 2 - 38);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('CPU Scores!', W / 2, H / 2 - 22);
     } else {
-      ctx.fillStyle = '#66ff66';
-      ctx.fillText('You Score!', W / 2, H / 2 - 38);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillText('You Score!', W / 2, H / 2 - 22);
     }
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#ddd';
-    ctx.fillText('next round starting...', W / 2, H / 2 - 16);
+    ctx.font = '14px Nunito, sans-serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Next round starting...', W / 2, H / 2 + 6);
     ctx.textAlign = 'left';
   }
 
-  // Action hints
+  // Action hints (Wii-style)
   if (gameState === 'playing' && pDist < HIT_RANGE) {
     ctx.textAlign = 'center';
-    ctx.font = '12px monospace';
-    ctx.fillStyle = 'rgba(255,255,200,0.9)';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(W/2 - 100, H - 32, 200, 24, 12);
+    ctx.fill();
+    
+    ctx.font = 'bold 12px Nunito, sans-serif';
+    ctx.fillStyle = '#4a4a4a';
     if (!player.onGround) {
-      ctx.fillText('CLICK to SPIKE!', W / 2, H - 8);
+      ctx.fillText('🏐 CLICK to SPIKE!', W / 2, H - 15);
     } else {
-      ctx.fillText('Q = Set  |  CLICK = Bump', W / 2, H - 8);
+      ctx.fillText('Q = Set  |  CLICK = Bump', W / 2, H - 15);
     }
     ctx.textAlign = 'left';
   }
@@ -721,10 +990,8 @@ function drawGame() {
 
 // ==================== GAME LOOP ====================
 function gameLoop() {
-  ctx.clearRect(0, 0, W, H);
-
   if (gameState === 'menu') {
-    drawMenu();
+    // Menu is handled by HTML/CSS
   } else if (gameState === 'roundOver') {
     updatePlayer();
     updateBall();
@@ -734,7 +1001,7 @@ function gameLoop() {
       playSound('whistle');
       resetRound();
     }
-  } else {
+  } else if (gameState === 'playing') {
     updatePlayer();
     updateAI();
     updateBall();
@@ -743,6 +1010,25 @@ function gameLoop() {
 
   clickedThisFrame = false;
   requestAnimationFrame(gameLoop);
+}
+
+// Polyfill for roundRect
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = [r, r, r, r];
+    else if (typeof r === 'undefined') r = [0, 0, 0, 0];
+    this.moveTo(x + r[0], y);
+    this.lineTo(x + w - r[1], y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r[1]);
+    this.lineTo(x + w, y + h - r[2]);
+    this.quadraticCurveTo(x + w, y + h, x + w - r[2], y + h);
+    this.lineTo(x + r[3], y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r[3]);
+    this.lineTo(x, y + r[0]);
+    this.quadraticCurveTo(x, y, x + r[0], y);
+    this.closePath();
+    return this;
+  };
 }
 
 document.getElementById('score').textContent = '0 - 0';
