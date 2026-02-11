@@ -14,10 +14,11 @@ body {
     flex-direction: column; 
     align-items: center; 
     justify-content: center; 
-    height: 100vh; 
+    min-height: 100vh; 
     font-family: 'Courier Prime', monospace;
     user-select: none;
-    overflow: hidden;
+    overflow-x: hidden;
+    padding: 10px;
 }
 
 .screen {
@@ -81,6 +82,12 @@ body {
 .menu-button.secondary:hover {
     background: #222;
     color: #fff;
+}
+
+.menu-button.small {
+    width: 120px;
+    height: 40px;
+    font-size: 14px;
 }
 
 #lobbyTitle, #waitingTitle, #settingsTitle {
@@ -147,16 +154,29 @@ body {
 }
 
 /* Settings */
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
 .settings-option {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 300px;
+    width: 320px;
     padding: 15px 20px;
     background: #fff;
     border: 2px solid #ddd;
     border-radius: 12px;
-    margin: 10px 0;
+}
+
+.settings-option.active {
+    border-color: #4CAF50;
+    background: #e8f5e9;
 }
 
 .settings-label {
@@ -166,40 +186,79 @@ body {
 }
 
 .settings-description {
-    font-size: 12px;
+    font-size: 11px;
     color: #666;
     margin-top: 4px;
 }
 
-.toggle {
-    width: 50px;
-    height: 28px;
-    background: #ccc;
-    border-radius: 14px;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.2s;
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.toggle.active {
-    background: #4CAF50;
-}
-
-.toggle::after {
-    content: '';
-    position: absolute;
-    width: 24px;
-    height: 24px;
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
     background: #fff;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: left 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 320px;
 }
 
-.toggle.active::after {
-    left: 24px;
+.radio-option:hover {
+    border-color: #999;
+}
+
+.radio-option.selected {
+    border-color: #4CAF50;
+    background: #e8f5e9;
+}
+
+.radio-circle {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #999;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.radio-option.selected .radio-circle {
+    border-color: #4CAF50;
+}
+
+.radio-circle::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #4CAF50;
+    border-radius: 50%;
+    display: none;
+}
+
+.radio-option.selected .radio-circle::after {
+    display: block;
+}
+
+.radio-text {
+    flex: 1;
+}
+
+.radio-title {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.radio-desc {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
 }
 
 #gameContainer {
@@ -209,18 +268,40 @@ body {
     position: relative;
 }
 
+#gameHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1220px;
+    margin-bottom: 10px;
+}
+
+#gameHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 #score { 
     color: #222;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
-    margin-bottom: 12px;
     letter-spacing: 8px;
 }
 
 #mode-indicator {
     font-size: 14px;
     color: #666;
-    margin-bottom: 8px;
+}
+
+#touchIndicator {
+    font-size: 14px;
+    color: #666;
+    background: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
 }
 
 .game-wrapper {
@@ -231,12 +312,13 @@ body {
 canvas { 
     border: 2px solid #222;
     cursor: crosshair;
+    border-radius: 8px;
 }
 
 /* Chat */
 #chatPanel {
-    width: 200px;
-    height: 450px;
+    width: 220px;
+    height: 520px;
     background: #fff;
     border: 2px solid #222;
     border-radius: 8px;
@@ -350,15 +432,9 @@ canvas {
     margin-left: 10px;
 }
 
-.mode-badge.volleyball {
-    background: #e3f2fd;
-    color: #1976d2;
-}
-
-.mode-badge.tennis {
-    background: #c8e6c9;
-    color: #388e3c;
-}
+.mode-badge.volleyball { background: #e3f2fd; color: #1976d2; }
+.mode-badge.tennis { background: #c8e6c9; color: #388e3c; }
+.mode-badge.badminton { background: #fff3e0; color: #e65100; }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
 </head>
@@ -375,16 +451,35 @@ canvas {
 <div id="settingsScreen" class="screen">
     <button class="back-button" id="settingsBackBtn">← Back</button>
     <div id="settingsTitle">Settings</div>
-    <div class="settings-option">
-        <div>
-            <div class="settings-label">🎾 Tennis Mode</div>
-            <div class="settings-description">Play tennis instead of volleyball</div>
+    <div class="settings-container">
+        <div style="font-weight: 700; margin-bottom: 5px;">Game Mode:</div>
+        <div class="radio-group" id="gameModeGroup">
+            <div class="radio-option selected" data-mode="volleyball">
+                <div class="radio-circle"></div>
+                <div class="radio-text">
+                    <div class="radio-title">🏐 Volleyball</div>
+                    <div class="radio-desc">3 touches max, no bounces</div>
+                </div>
+            </div>
+            <div class="radio-option" data-mode="tennis">
+                <div class="radio-circle"></div>
+                <div class="radio-text">
+                    <div class="radio-title">🎾 Tennis</div>
+                    <div class="radio-desc">1 touch, 1 bounce allowed</div>
+                </div>
+            </div>
+            <div class="radio-option" data-mode="badminton">
+                <div class="radio-circle"></div>
+                <div class="radio-text">
+                    <div class="radio-title">🏸 Badminton</div>
+                    <div class="radio-desc">1 touch, no bounces, shuttlecock physics</div>
+                </div>
+            </div>
         </div>
-        <div class="toggle" id="tennisToggle"></div>
+        <p style="margin-top: 15px; color: #666; font-size: 11px; text-align: center; max-width: 300px;">
+            Both players must have the same mode selected to play together.
+        </p>
     </div>
-    <p style="margin-top: 20px; color: #666; font-size: 12px; text-align: center; max-width: 300px;">
-        Both players must have Tennis Mode enabled to play tennis together.
-    </p>
 </div>
 
 <div id="lobbyScreen" class="screen">
@@ -403,10 +498,16 @@ canvas {
 </div>
 
 <div id="gameContainer">
-    <div id="mode-indicator"></div>
-    <div id="score">0 - 0</div>
+    <div id="gameHeader">
+        <div id="gameHeaderLeft">
+            <button class="menu-button small secondary" id="exitGameBtn">← Menu</button>
+            <div id="mode-indicator"></div>
+        </div>
+        <div id="score">0 - 0</div>
+        <div id="touchIndicator"></div>
+    </div>
     <div class="game-wrapper">
-        <canvas id="game" width="800" height="450"></canvas>
+        <canvas id="game" width="980" height="520"></canvas>
         <div id="chatPanel">
             <div id="chatHeader">Chat</div>
             <div id="chatMessages"></div>
@@ -416,7 +517,7 @@ canvas {
             </div>
         </div>
     </div>
-    <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike</div>
+    <div id="info">A / D = move | W / SPACE = jump | Q = set | CLICK = hit | JUMP + CLICK = smash</div>
 </div>
 
 <script>
@@ -425,23 +526,58 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width;
 const H = canvas.height;
 
-const GROUND_Y = H - 40;
+const GROUND_Y = H - 50;
 const NET_X = W / 2;
-const GRAVITY = 0.32;
-const BALL_GRAVITY = 0.20;
-const HIT_RANGE = 80;
+const GRAVITY = 0.35;
+const HIT_RANGE = 90;
 
 // Game settings
-let tennisMode = false;
-let activeTennisMode = false; // What's actually being played
+let selectedMode = 'volleyball'; // 'volleyball', 'tennis', 'badminton'
+let activeMode = 'volleyball';
 
-// Net heights differ between modes
-function getNetHeight() {
-    return activeTennisMode ? 70 : 120;
-}
+// Mode-specific settings
+const MODES = {
+    volleyball: {
+        netHeight: 140,
+        maxTouches: 3,
+        allowBounce: false,
+        ballGravity: 0.22,
+        ballColor: '#ffffff',
+        playerColor: '#3366ff',
+        opponentColor: '#ff4444',
+        groundColor: '#5a8f3c',
+        skyColors: ['#87CEEB', '#d4eef7'],
+        ballSize: 16
+    },
+    tennis: {
+        netHeight: 80,
+        maxTouches: 1,
+        allowBounce: true,
+        ballGravity: 0.25,
+        ballColor: '#ccff00',
+        playerColor: '#2e7d32',
+        opponentColor: '#c62828',
+        groundColor: '#1565c0',
+        skyColors: ['#4fc3f7', '#81d4fa'],
+        ballSize: 14
+    },
+    badminton: {
+        netHeight: 160,
+        maxTouches: 1,
+        allowBounce: false,
+        ballGravity: 0.18,
+        shuttleDrag: 0.98,
+        ballColor: '#ffffff',
+        playerColor: '#6a1b9a',
+        opponentColor: '#00838f',
+        groundColor: '#43a047',
+        skyColors: ['#fff8e1', '#ffecb3'],
+        ballSize: 12
+    }
+};
 
-function getNetTop() {
-    return GROUND_Y - getNetHeight();
+function getModeSettings() {
+    return MODES[activeMode];
 }
 
 let playerScore = 0;
@@ -451,12 +587,17 @@ let gameState = 'menu';
 let roundTimer = 0;
 let gameMode = 'solo';
 
+// Touch tracking
+let playerTouches = 0;
+let opponentTouches = 0;
+let lastTouchSide = null;
+
 // Multiplayer
 let peer = null;
 let conn = null;
 let isHost = false;
 let lobbyCode = '';
-let opponentTennisMode = false;
+let opponentSelectedMode = 'volleyball';
 
 const keys = {};
 let clickedThisFrame = false;
@@ -516,17 +657,16 @@ function playSound(type) {
             osc.start(now);
             osc.stop(now + 0.15);
             break;
-        case 'bump':
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.exponentialRampToValueAtTime(500, now + 0.08);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-            osc.start(now);
-            osc.stop(now + 0.2);
-            break;
-        case 'spike':
         case 'hit':
+            osc.type = activeMode === 'badminton' ? 'sine' : 'triangle';
+            osc.frequency.setValueAtTime(activeMode === 'badminton' ? 800 : 300, now);
+            osc.frequency.exponentialRampToValueAtTime(activeMode === 'badminton' ? 400 : 500, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+        case 'smash':
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(200, now);
             osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
@@ -555,6 +695,14 @@ function playSound(type) {
             osc.start(now);
             osc.stop(now + 0.4);
             break;
+        case 'fault':
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200, now);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+            break;
         case 'net':
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(180, now);
@@ -565,8 +713,8 @@ function playSound(type) {
             break;
         case 'bounce':
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(activeTennisMode ? 400 : 250, now);
-            osc.frequency.exponentialRampToValueAtTime(activeTennisMode ? 200 : 150, now + 0.08);
+            osc.frequency.setValueAtTime(activeMode === 'tennis' ? 400 : 250, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
             gain.gain.setValueAtTime(0.08, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
             osc.start(now);
@@ -596,18 +744,33 @@ function showScreen(screenId) {
     }
 }
 
+function exitToMenu() {
+    if (confirm('Leave the game?')) {
+        cleanupPeer();
+        gameState = 'menu';
+        showScreen('menuScreen');
+    }
+}
+
 // ==================== SETTINGS ====================
-const tennisToggle = document.getElementById('tennisToggle');
-tennisToggle.addEventListener('click', () => {
-    tennisMode = !tennisMode;
-    tennisToggle.classList.toggle('active', tennisMode);
-    localStorage.setItem('tennisMode', tennisMode);
+const gameModeGroup = document.getElementById('gameModeGroup');
+gameModeGroup.addEventListener('click', (e) => {
+    const option = e.target.closest('.radio-option');
+    if (option) {
+        document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedMode = option.dataset.mode;
+        localStorage.setItem('gameMode', selectedMode);
+    }
 });
 
 // Load saved settings
-if (localStorage.getItem('tennisMode') === 'true') {
-    tennisMode = true;
-    tennisToggle.classList.add('active');
+const savedMode = localStorage.getItem('gameMode');
+if (savedMode && MODES[savedMode]) {
+    selectedMode = savedMode;
+    document.querySelectorAll('.radio-option').forEach(o => {
+        o.classList.toggle('selected', o.dataset.mode === selectedMode);
+    });
 }
 
 // ==================== MULTIPLAYER ====================
@@ -684,7 +847,7 @@ function joinLobby() {
             setupConnectionHandlers();
             
             console.log('Client: sending ready signal');
-            conn.send({ type: 'ready', tennisMode: tennisMode });
+            conn.send({ type: 'ready', selectedMode: selectedMode });
         });
         
         conn.on('data', (data) => {
@@ -723,13 +886,13 @@ function handleNetworkData(data) {
     console.log('Received:', data.type);
     
     if (data.type === 'ready' && isHost) {
-        opponentTennisMode = data.tennisMode;
-        console.log('Host: client is ready, their tennis mode:', opponentTennisMode);
+        opponentSelectedMode = data.selectedMode;
+        console.log('Host: client is ready, their mode:', opponentSelectedMode);
         startMultiplayerGame();
     } else if (data.type === 'start' && !isHost) {
-        opponentTennisMode = data.tennisMode;
-        activeTennisMode = tennisMode && opponentTennisMode;
-        console.log('Client: received start signal, tennis mode:', activeTennisMode);
+        opponentSelectedMode = data.selectedMode;
+        activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball';
+        console.log('Client: received start signal, active mode:', activeMode);
         beginGame();
     } else if (data.type === 'state' && !isHost) {
         player.x = W - data.opponent.x - player.w;
@@ -742,8 +905,10 @@ function handleNetworkData(data) {
         ball.vy = data.ball.vy;
         playerScore = data.opponentScore;
         opponentScore = data.playerScore;
+        playerTouches = data.opponentTouches;
+        opponentTouches = data.playerTouches;
         gameState = data.gameState;
-        document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+        updateScoreDisplay();
     } else if (data.type === 'input' && isHost) {
         remoteInput = data.input;
     } else if (data.type === 'sound') {
@@ -762,6 +927,8 @@ function sendState() {
             ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
             playerScore: playerScore,
             opponentScore: opponentScore,
+            playerTouches: playerTouches,
+            opponentTouches: opponentTouches,
             gameState: gameState
         });
     }
@@ -783,26 +950,39 @@ function sendInput() {
 }
 
 function startMultiplayerGame() {
-    activeTennisMode = tennisMode && opponentTennisMode;
-    conn.send({ type: 'start', tennisMode: tennisMode });
+    activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball';
+    conn.send({ type: 'start', selectedMode: selectedMode });
     beginGame();
 }
 
 function beginGame() {
-    let modeText = isHost ? '🟢 Hosting' : '🔵 Connected';
-    let modeBadge = activeTennisMode ? '<span class="mode-badge tennis">TENNIS</span>' : '<span class="mode-badge volleyball">VOLLEYBALL</span>';
-    document.getElementById('mode-indicator').innerHTML = modeText + modeBadge;
+    const mode = getModeSettings();
+    let modeText = isHost ? '🟢 Hosting' : (gameMode === 'client' ? '🔵 Connected' : 'vs AI');
+    let modeIcon = activeMode === 'volleyball' ? '🏐' : (activeMode === 'tennis' ? '🎾' : '🏸');
+    let modeBadge = `<span class="mode-badge ${activeMode}">${modeIcon} ${activeMode.toUpperCase()}</span>`;
+    document.getElementById('mode-indicator').innerHTML = modeText + ' ' + modeBadge;
     
-    // Clear chat
     document.getElementById('chatMessages').innerHTML = '';
     
     if (gameMode !== 'solo') {
-        if (activeTennisMode) {
-            addChatMessage('Tennis mode enabled!', 'system');
-        } else if (tennisMode !== opponentTennisMode) {
-            addChatMessage('Tennis mode mismatch - playing volleyball', 'system');
+        if (selectedMode !== opponentSelectedMode) {
+            addChatMessage(`Mode mismatch! You: ${selectedMode}, Opponent: ${opponentSelectedMode}`, 'system');
+            addChatMessage('Defaulting to Volleyball', 'system');
+        } else {
+            addChatMessage(`Playing ${activeMode}!`, 'system');
         }
         addChatMessage('Game started!', 'system');
+    } else {
+        addChatMessage(`Playing ${activeMode} vs AI`, 'system');
+    }
+    
+    // Update controls hint
+    if (activeMode === 'volleyball') {
+        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike';
+    } else if (activeMode === 'tennis') {
+        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | CLICK = hit | JUMP + CLICK = smash';
+    } else {
+        document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | CLICK = hit | JUMP + CLICK = smash';
     }
     
     initAudio();
@@ -831,6 +1011,10 @@ document.addEventListener('keydown', e => {
     
     if (e.key.toLowerCase() === 'q') {
         setPressed = true;
+    }
+    
+    if (e.key === 'Escape' && (gameState === 'playing' || gameState === 'roundOver')) {
+        exitToMenu();
     }
     
     if (gameState === 'playing' || gameState === 'roundOver') {
@@ -867,17 +1051,8 @@ document.getElementById('joinBtn').addEventListener('click', () => {
 document.getElementById('soloBtn').addEventListener('click', () => {
     initAudio();
     gameMode = 'solo';
-    activeTennisMode = tennisMode;
-    let modeBadge = activeTennisMode ? '<span class="mode-badge tennis">TENNIS</span>' : '<span class="mode-badge volleyball">VOLLEYBALL</span>';
-    document.getElementById('mode-indicator').innerHTML = 'vs AI ' + modeBadge;
-    document.getElementById('chatMessages').innerHTML = '';
-    addChatMessage('Playing against AI', 'system');
-    playSound('whistle');
-    showScreen('game');
-    gameState = 'playing';
-    playerScore = 0;
-    opponentScore = 0;
-    resetRound();
+    activeMode = selectedMode;
+    beginGame();
 });
 
 document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -903,6 +1078,8 @@ document.getElementById('waitingBackBtn').addEventListener('click', () => {
     showScreen('menuScreen');
 });
 
+document.getElementById('exitGameBtn').addEventListener('click', exitToMenu);
+
 document.getElementById('lobbyInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         initAudio();
@@ -912,29 +1089,44 @@ document.getElementById('lobbyInput').addEventListener('keypress', (e) => {
 
 // ==================== ENTITIES ====================
 const player = {
-    x: 150, y: GROUND_Y - 50, w: 50, h: 50,
-    vx: 0, vy: 0, speed: 3.5, jumpPower: -8,
+    x: 150, y: GROUND_Y - 55, w: 55, h: 55,
+    vx: 0, vy: 0, speed: 4, jumpPower: -9,
     onGround: true, facingRight: true
 };
 
 const opponent = {
-    x: W - 200, y: GROUND_Y - 50, w: 50, h: 50,
-    vx: 0, vy: 0, speed: 3.2, jumpPower: -8,
+    x: W - 220, y: GROUND_Y - 55, w: 55, h: 55,
+    vx: 0, vy: 0, speed: 3.5, jumpPower: -9,
     onGround: true,
     actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
     personality: 0, lastDecision: 0, mistakeChance: 0
 };
 
 const ball = {
-    x: 200, y: 150, r: 14,
+    x: 200, y: 150, r: 16,
     vx: 0, vy: 0,
     lastHitBy: null, bounceCount: 0
 };
 
 // ==================== GAME LOGIC ====================
+function updateScoreDisplay() {
+    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+    
+    const mode = getModeSettings();
+    let touchText = '';
+    if (activeMode === 'volleyball') {
+        touchText = `Touches: You ${playerTouches}/${mode.maxTouches} | Opp ${opponentTouches}/${mode.maxTouches}`;
+    } else {
+        touchText = mode.allowBounce ? `Bounces: ${ball.bounceCount}/1` : '';
+    }
+    document.getElementById('touchIndicator').textContent = touchText;
+}
+
 function resetRound() {
-    player.x = 150; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
-    opponent.x = W - 200; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
+    const mode = getModeSettings();
+    
+    player.x = 180; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
+    opponent.x = W - 240; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
     opponent.actionCooldown = 0;
     opponent.hitCount = 0;
     opponent.personality = Math.random();
@@ -944,14 +1136,20 @@ function resetRound() {
     ball.vx = 0;
     ball.lastHitBy = null;
     ball.bounceCount = 0;
+    ball.r = mode.ballSize;
+    
+    playerTouches = 0;
+    opponentTouches = 0;
+    lastTouchSide = null;
+    
     if (serveSide === 'player') {
-        ball.x = 200; ball.y = 130;
+        ball.x = 220; ball.y = 140;
     } else {
-        ball.x = W - 200; ball.y = 130;
+        ball.x = W - 220; ball.y = 140;
     }
     gameState = 'playing';
     roundTimer = 0;
-    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+    updateScoreDisplay();
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -973,42 +1171,101 @@ function capBallSpeed(maxSpd) {
     }
 }
 
-function doSet(rect, direction) {
-    if (ballCenter(rect) > HIT_RANGE) return false;
-    ball.vx = direction * 1.5;
-    ball.vy = -9;
-    ball.lastHitBy = rect === player ? 'player' : 'opponent';
+function registerTouch(isPlayer) {
+    const mode = getModeSettings();
+    const side = isPlayer ? 'player' : 'opponent';
+    
+    if (lastTouchSide !== side) {
+        // Ball changed sides, reset touches
+        if (isPlayer) {
+            playerTouches = 1;
+        } else {
+            opponentTouches = 1;
+        }
+        lastTouchSide = side;
+    } else {
+        if (isPlayer) {
+            playerTouches++;
+        } else {
+            opponentTouches++;
+        }
+    }
+    
     ball.bounceCount = 0;
+    updateScoreDisplay();
+    
+    // Check for too many touches
+    if (isPlayer && playerTouches > mode.maxTouches) {
+        return false; // Fault
+    }
+    if (!isPlayer && opponentTouches > mode.maxTouches) {
+        return false;
+    }
+    
+    return true;
+}
+
+function doSet(rect, direction) {
+    if (activeMode !== 'volleyball') return doHit(rect, direction);
+    if (ballCenter(rect) > HIT_RANGE) return false;
+    
+    const isPlayer = rect === player;
+    if (!registerTouch(isPlayer)) {
+        scorePoint(!isPlayer);
+        playSound('fault');
+        return false;
+    }
+    
+    ball.vx = direction * 1.5;
+    ball.vy = -10;
+    ball.lastHitBy = isPlayer ? 'player' : 'opponent';
     playSound('set');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'set' });
     return true;
 }
 
-function doBump(rect, direction) {
+function doHit(rect, direction) {
     if (ballCenter(rect) > HIT_RANGE) return false;
-    ball.vx = direction * 6;
-    ball.vy = -7;
-    ball.lastHitBy = rect === player ? 'player' : 'opponent';
-    ball.bounceCount = 0;
-    capBallSpeed(11);
-    playSound(activeTennisMode ? 'hit' : 'bump');
-    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: activeTennisMode ? 'hit' : 'bump' });
+    
+    const isPlayer = rect === player;
+    if (!registerTouch(isPlayer)) {
+        scorePoint(!isPlayer);
+        playSound('fault');
+        return false;
+    }
+    
+    ball.vx = direction * 7;
+    ball.vy = -8;
+    ball.lastHitBy = isPlayer ? 'player' : 'opponent';
+    capBallSpeed(12);
+    playSound('hit');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'hit' });
     return true;
 }
 
-function doSpike(rect, direction) {
+function doSmash(rect, direction) {
     if (ballCenter(rect) > HIT_RANGE) return false;
-    let distToNet = Math.abs(ball.x - NET_X);
-    let spikeVx = direction * (8 + Math.min(distToNet / 50, 3));
-    let spikeVy = 2 + (ball.y < getNetTop() ? 3 : 1);
     
-    ball.vx = spikeVx;
-    ball.vy = spikeVy;
-    ball.lastHitBy = rect === player ? 'player' : 'opponent';
-    ball.bounceCount = 0;
-    capBallSpeed(13);
-    playSound(activeTennisMode ? 'hit' : 'spike');
-    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: activeTennisMode ? 'hit' : 'spike' });
+    const isPlayer = rect === player;
+    const mode = getModeSettings();
+    const netTop = GROUND_Y - mode.netHeight;
+    
+    if (!registerTouch(isPlayer)) {
+        scorePoint(!isPlayer);
+        playSound('fault');
+        return false;
+    }
+    
+    let distToNet = Math.abs(ball.x - NET_X);
+    let smashVx = direction * (9 + Math.min(distToNet / 50, 3));
+    let smashVy = activeMode === 'badminton' ? 5 : (3 + (ball.y < netTop ? 3 : 1));
+    
+    ball.vx = smashVx;
+    ball.vy = smashVy;
+    ball.lastHitBy = isPlayer ? 'player' : 'opponent';
+    capBallSpeed(14);
+    playSound('smash');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'smash' });
     return true;
 }
 
@@ -1042,16 +1299,16 @@ function updatePlayer() {
         player.onGround = false;
     }
 
-    if (setPressed) {
+    if (setPressed && activeMode === 'volleyball') {
         setPressed = false;
         doSet(player, 1);
     }
 
     if (clickedThisFrame) {
         if (!player.onGround && ball.y < player.y + 20) {
-            doSpike(player, 1);
+            doSmash(player, 1);
         } else {
-            doBump(player, 1);
+            doHit(player, 1);
         }
     }
 
@@ -1064,7 +1321,7 @@ function updatePlayer() {
         player.vy = 0;
         player.onGround = true;
     }
-    player.x = clamp(player.x, 0, NET_X - player.w - 5);
+    player.x = clamp(player.x, 0, NET_X - player.w - 8);
 }
 
 // ==================== OPPONENT ====================
@@ -1077,16 +1334,16 @@ function updateOpponent() {
             opponent.vy = opponent.jumpPower;
             opponent.onGround = false;
         }
-        if (remoteInput.set) {
+        if (remoteInput.set && activeMode === 'volleyball') {
             remoteInput.set = false;
             doSet(opponent, -1);
         }
         if (remoteInput.click) {
             remoteInput.click = false;
             if (!opponent.onGround && ball.y < opponent.y + 20) {
-                doSpike(opponent, -1);
+                doSmash(opponent, -1);
             } else {
-                doBump(opponent, -1);
+                doHit(opponent, -1);
             }
         }
     } else if (gameMode === 'solo') {
@@ -1103,30 +1360,33 @@ function updateOpponent() {
             opponent.vy = 0;
             opponent.onGround = true;
         }
-        opponent.x = clamp(opponent.x, NET_X + 5, W - opponent.w);
+        opponent.x = clamp(opponent.x, NET_X + 8, W - opponent.w);
     }
 }
 
 function updateAI() {
+    const mode = getModeSettings();
+    const netTop = GROUND_Y - mode.netHeight;
+    
     opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
     opponent.lastDecision++;
 
     let ballOnMySide = ball.x > NET_X;
     let distToB = ballCenter(opponent);
-    const NET_TOP = getNetTop();
 
     let predictX = ball.x;
     let predictY = ball.y;
     let pvx = ball.vx;
     let pvy = ball.vy;
     for (let i = 0; i < 80; i++) {
-        pvy += BALL_GRAVITY;
+        pvy += mode.ballGravity;
+        if (activeMode === 'badminton') pvx *= mode.shuttleDrag;
         predictX += pvx;
         predictY += pvy;
         if (predictY >= GROUND_Y - 20) break;
     }
 
-    if (opponent.lastDecision > 30 + Math.random() * 20) {
+    if (opponent.lastDecision > 25 + Math.random() * 15) {
         opponent.lastDecision = 0;
         
         if (Math.random() < opponent.mistakeChance) {
@@ -1144,7 +1404,7 @@ function updateAI() {
         }
     }
 
-    opponent.targetX = clamp(opponent.targetX, NET_X + 10, W - opponent.w - 10);
+    opponent.targetX = clamp(opponent.targetX, NET_X + 12, W - opponent.w - 12);
 
     let diff = opponent.targetX - opponent.x;
     let moveThreshold = 8 + Math.random() * 5;
@@ -1158,64 +1418,54 @@ function updateAI() {
 
     if (ballOnMySide && opponent.actionCooldown <= 0) {
         let ballComingDown = ball.vy > 0;
-        let ballNear = distToB < HIT_RANGE + 20;
+        let ballNear = distToB < HIT_RANGE + 25;
         let ballAbove = ball.y < opponent.y;
-        let ballHigh = ball.y < NET_TOP - 20;
+        let ballHigh = ball.y < netTop - 20;
 
-        if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
-            let shouldJump = ball.y < NET_TOP + 80;
+        if (ballAbove && ballComingDown && distToB < 180 && opponent.onGround) {
+            let shouldJump = ball.y < netTop + 100;
             if (shouldJump && Math.random() > 0.15) {
-                let jumpDelay = Math.floor(Math.random() * 8);
                 setTimeout(() => {
                     if (opponent.onGround) {
                         opponent.vy = opponent.jumpPower * (0.9 + Math.random() * 0.2);
                         opponent.onGround = false;
                     }
-                }, jumpDelay * 16);
+                }, Math.floor(Math.random() * 6) * 16);
             }
         }
 
         if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
-            let actionDelay = Math.floor(Math.random() * 5);
-            
             setTimeout(() => {
                 if (opponent.actionCooldown > 0) return;
                 
                 if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
                     if (Math.random() > 0.2) {
-                        if (doSpike(opponent, -1)) {
-                            opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+                        if (doSmash(opponent, -1)) {
+                            opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
                             opponent.hitCount = 0;
                         }
                     }
                 }
-                else if (opponent.hitCount === 0 && ballComingDown) {
+                else if (activeMode === 'volleyball' && opponent.hitCount === 0 && ballComingDown) {
                     if (Math.random() > 0.3) {
-                        if (activeTennisMode) {
-                            if (doBump(opponent, -1)) {
-                                opponent.actionCooldown = 15 + Math.floor(Math.random() * 8);
-                                opponent.hitCount = 0;
-                            }
-                        } else {
-                            if (doSet(opponent, -1)) {
-                                opponent.actionCooldown = 12 + Math.floor(Math.random() * 8);
-                                opponent.hitCount = 1;
-                            }
+                        if (doSet(opponent, -1)) {
+                            opponent.actionCooldown = 10 + Math.floor(Math.random() * 6);
+                            opponent.hitCount = 1;
                         }
                     }
                 }
-                else if (opponent.hitCount >= 1) {
-                    if (doBump(opponent, -1)) {
-                        opponent.actionCooldown = 18 + Math.floor(Math.random() * 12);
+                else {
+                    if (doHit(opponent, -1)) {
+                        opponent.actionCooldown = 15 + Math.floor(Math.random() * 10);
                         opponent.hitCount = 0;
                     }
                 }
-            }, actionDelay * 16);
+            }, Math.floor(Math.random() * 4) * 16);
         }
 
-        if (ballNear && ball.y > NET_TOP + 40 && ballComingDown && opponent.actionCooldown <= 0) {
-            if (doBump(opponent, -1)) {
-                opponent.actionCooldown = 20 + Math.floor(Math.random() * 10);
+        if (ballNear && ball.y > netTop + 50 && ballComingDown && opponent.actionCooldown <= 0) {
+            if (doHit(opponent, -1)) {
+                opponent.actionCooldown = 18 + Math.floor(Math.random() * 10);
                 opponent.hitCount = 0;
             }
         }
@@ -1230,14 +1480,17 @@ function updateAI() {
 function updateBall() {
     if (gameMode === 'client') return;
 
-    const NET_TOP = getNetTop();
-    const NET_HEIGHT = getNetHeight();
+    const mode = getModeSettings();
+    const netTop = GROUND_Y - mode.netHeight;
 
-    ball.vy += BALL_GRAVITY;
+    ball.vy += mode.ballGravity;
+    if (activeMode === 'badminton') {
+        ball.vx *= mode.shuttleDrag;
+    }
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    capBallSpeed(13);
+    capBallSpeed(14);
 
     if (ball.x - ball.r < 0) {
         ball.x = ball.r;
@@ -1255,26 +1508,39 @@ function updateBall() {
         playSound('bounce');
     }
 
+    // Net collision
     let hitNet = false;
-    if (ball.y + ball.r > NET_TOP && ball.y - ball.r < GROUND_Y) {
-        if (ball.x - ball.r < NET_X + 4 && ball.x + ball.r > NET_X - 4) {
+    if (ball.y + ball.r > netTop && ball.y - ball.r < GROUND_Y) {
+        if (ball.x - ball.r < NET_X + 5 && ball.x + ball.r > NET_X - 5) {
             hitNet = true;
             if (ball.x < NET_X) {
-                ball.x = NET_X - 4 - ball.r;
-                ball.vx = -Math.abs(ball.vx) * 0.6;
+                ball.x = NET_X - 5 - ball.r;
+                ball.vx = -Math.abs(ball.vx) * 0.5;
             } else {
-                ball.x = NET_X + 4 + ball.r;
-                ball.vx = Math.abs(ball.vx) * 0.6;
+                ball.x = NET_X + 5 + ball.r;
+                ball.vx = Math.abs(ball.vx) * 0.5;
             }
         }
     }
-    if (ball.x > NET_X - 10 && ball.x < NET_X + 10 && ball.y + ball.r > NET_TOP && ball.y < NET_TOP + 6) {
-        ball.y = NET_TOP - ball.r;
-        ball.vy = -Math.abs(ball.vy) * 0.5;
+    if (ball.x > NET_X - 12 && ball.x < NET_X + 12 && ball.y + ball.r > netTop && ball.y < netTop + 8) {
+        ball.y = netTop - ball.r;
+        ball.vy = -Math.abs(ball.vy) * 0.4;
         hitNet = true;
     }
     if (hitNet) playSound('net');
 
+    // Check ball crossing sides - reset touch count
+    let currentSide = ball.x < NET_X ? 'player' : 'opponent';
+    if (lastTouchSide && currentSide !== lastTouchSide) {
+        if (currentSide === 'player') {
+            playerTouches = 0;
+        } else {
+            opponentTouches = 0;
+        }
+        updateScoreDisplay();
+    }
+
+    // Player collision
     if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
         pushBallOutOfRect(player);
         ball.vy = Math.min(ball.vy, -2);
@@ -1286,111 +1552,82 @@ function updateBall() {
         playSound('bounce');
     }
 
-    // Ground bounce/score logic
+    // Ground - scoring
     if (ball.y + ball.r >= GROUND_Y && gameState === 'playing') {
-        if (activeTennisMode) {
-            // Tennis: allow one bounce
+        if (mode.allowBounce && ball.bounceCount < 1) {
             ball.bounceCount++;
-            if (ball.bounceCount >= 2) {
-                // Second bounce = point
-                scorePoint();
-            } else {
-                // First bounce
-                ball.y = GROUND_Y - ball.r;
-                ball.vy = -ball.vy * 0.6;
-                ball.vx *= 0.8;
-                playSound('bounce');
-            }
+            ball.y = GROUND_Y - ball.r;
+            ball.vy = -ball.vy * 0.55;
+            ball.vx *= 0.75;
+            playSound('bounce');
+            updateScoreDisplay();
         } else {
-            // Volleyball: immediate score on ground touch
-            scorePoint();
+            let scorerIsPlayer = ball.x >= NET_X;
+            scorePoint(scorerIsPlayer);
         }
     }
 }
 
-function scorePoint() {
+function scorePoint(playerScored) {
     gameState = 'roundOver';
-    roundTimer = 90;
+    roundTimer = 100;
 
-    if (ball.x < NET_X) {
-        opponentScore++;
-        serveSide = 'player';
-        playSound('lose');
-    } else {
+    if (playerScored) {
         playerScore++;
         serveSide = 'opponent';
         playSound('score');
+    } else {
+        opponentScore++;
+        serveSide = 'player';
+        playSound('lose');
     }
-    document.getElementById('score').textContent = playerScore + ' - ' + opponentScore;
+    
+    updateScoreDisplay();
     ball.vy = 0;
     ball.vx = 0;
     ball.y = GROUND_Y - ball.r;
 }
 
 // ==================== DRAWING ====================
-function getPlayerColor() {
-    return activeTennisMode ? '#2e7d32' : '#3366ff';
-}
-
-function getOpponentColor() {
-    return activeTennisMode ? '#c62828' : '#ff4444';
-}
-
-function getBallColor() {
-    return activeTennisMode ? '#ccff00' : '#ffffff';
-}
-
 function drawGame() {
-    const NET_TOP = getNetTop();
-    const NET_HEIGHT = getNetHeight();
+    const mode = getModeSettings();
+    const netTop = GROUND_Y - mode.netHeight;
 
-    // Sky/Background
+    // Sky
     let grad = ctx.createLinearGradient(0, 0, 0, H);
-    if (activeTennisMode) {
-        grad.addColorStop(0, '#4fc3f7');
-        grad.addColorStop(1, '#81d4fa');
-    } else {
-        grad.addColorStop(0, '#87CEEB');
-        grad.addColorStop(1, '#d4eef7');
-    }
+    grad.addColorStop(0, mode.skyColors[0]);
+    grad.addColorStop(1, mode.skyColors[1]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Ground/Court
-    if (activeTennisMode) {
-        // Tennis court (hard court blue)
-        ctx.fillStyle = '#1565c0';
-        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-        
-        // Court lines
+    // Ground
+    ctx.fillStyle = mode.groundColor;
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    
+    // Court markings
+    if (activeMode === 'tennis') {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 3;
-        
-        // Baseline
         ctx.beginPath();
-        ctx.moveTo(20, GROUND_Y);
-        ctx.lineTo(W - 20, GROUND_Y);
+        ctx.moveTo(30, GROUND_Y);
+        ctx.lineTo(W - 30, GROUND_Y);
         ctx.stroke();
-        
-        // Service boxes
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(100, GROUND_Y);
-        ctx.lineTo(100, GROUND_Y + 40);
-        ctx.moveTo(W - 100, GROUND_Y);
-        ctx.lineTo(W - 100, GROUND_Y + 40);
+        ctx.moveTo(120, GROUND_Y);
+        ctx.lineTo(120, GROUND_Y + 50);
+        ctx.moveTo(W - 120, GROUND_Y);
+        ctx.lineTo(W - 120, GROUND_Y + 50);
         ctx.stroke();
-        
-        // Center mark
+    } else if (activeMode === 'badminton') {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(50, GROUND_Y, W - 100, 50);
         ctx.beginPath();
         ctx.moveTo(NET_X, GROUND_Y);
-        ctx.lineTo(NET_X, GROUND_Y + 15);
+        ctx.lineTo(NET_X, GROUND_Y + 50);
         ctx.stroke();
     } else {
-        ctx.fillStyle = '#5a8f3c';
-        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-        
-        // Court line
         ctx.strokeStyle = 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
@@ -1402,35 +1639,19 @@ function drawGame() {
     }
 
     // Net
-    if (activeTennisMode) {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(NET_X - 2, NET_TOP, 4, NET_HEIGHT);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(NET_X - 8, NET_TOP - 3, 16, 6);
-        
-        // Net mesh
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
-        for (let ny = NET_TOP + 10; ny < GROUND_Y; ny += 10) {
-            ctx.beginPath();
-            ctx.moveTo(NET_X - 2, ny);
-            ctx.lineTo(NET_X + 2, ny);
-            ctx.stroke();
-        }
-    } else {
-        ctx.fillStyle = '#333';
-        ctx.fillRect(NET_X - 3, NET_TOP, 6, NET_HEIGHT);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(NET_X - 6, NET_TOP - 4, 12, 8);
-        
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.lineWidth = 1;
-        for (let ny = NET_TOP + 15; ny < GROUND_Y; ny += 15) {
-            ctx.beginPath();
-            ctx.moveTo(NET_X - 3, ny);
-            ctx.lineTo(NET_X + 3, ny);
-            ctx.stroke();
-        }
+    ctx.fillStyle = activeMode === 'badminton' ? '#555' : '#333';
+    ctx.fillRect(NET_X - 4, netTop, 8, mode.netHeight);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(NET_X - 8, netTop - 5, 16, 10);
+    
+    // Net pattern
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    for (let ny = netTop + 12; ny < GROUND_Y; ny += 12) {
+        ctx.beginPath();
+        ctx.moveTo(NET_X - 4, ny);
+        ctx.lineTo(NET_X + 4, ny);
+        ctx.stroke();
     }
 
     // Hit range indicator
@@ -1438,101 +1659,130 @@ function drawGame() {
     if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
         ctx.beginPath();
         ctx.arc(player.x + player.w / 2, player.y + player.h / 2, HIT_RANGE, 0, Math.PI * 2);
-        ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.1)';
+        ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.15)';
         ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
+        ctx.setLineDash([5, 5]);
         ctx.stroke();
         ctx.setLineDash([]);
     }
 
-    // Player shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(player.x + 5, GROUND_Y - 3, player.w - 10, 6);
+    // Shadows
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(player.x + player.w/2, GROUND_Y + 2, player.w * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(opponent.x + opponent.w/2, GROUND_Y + 2, opponent.w * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Player (cube)
-    ctx.fillStyle = getPlayerColor();
+    // Player
+    ctx.fillStyle = mode.playerColor;
     ctx.fillRect(player.x, player.y, player.w, player.h);
     ctx.fillStyle = '#fff';
-    ctx.fillRect(player.x + 30, player.y + 12, 12, 12);
+    ctx.fillRect(player.x + 32, player.y + 14, 14, 14);
     ctx.fillStyle = '#000';
-    ctx.fillRect(player.x + 36, player.y + 16, 4, 4);
+    ctx.fillRect(player.x + 38, player.y + 18, 5, 5);
 
-    // Opponent shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(opponent.x + 5, GROUND_Y - 3, opponent.w - 10, 6);
-
-    // Opponent (cube)
-    ctx.fillStyle = getOpponentColor();
+    // Opponent
+    ctx.fillStyle = mode.opponentColor;
     ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
     ctx.fillStyle = '#fff';
-    ctx.fillRect(opponent.x + 8, opponent.y + 12, 12, 12);
+    ctx.fillRect(opponent.x + 9, opponent.y + 14, 14, 14);
     ctx.fillStyle = '#000';
-    ctx.fillRect(opponent.x + 10, opponent.y + 16, 4, 4);
+    ctx.fillRect(opponent.x + 12, opponent.y + 18, 5, 5);
 
     // Ball shadow
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.beginPath();
-    ctx.ellipse(ball.x, GROUND_Y, ball.r * 0.8, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(ball.x, GROUND_Y + 2, ball.r * 0.7, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ball
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-    ctx.fillStyle = getBallColor();
-    ctx.fill();
-    
-    if (activeTennisMode) {
-        // Tennis ball curve
-        ctx.strokeStyle = '#a0d400';
-        ctx.lineWidth = 2;
+    // Ball / Shuttlecock
+    if (activeMode === 'badminton') {
+        // Shuttlecock
+        let angle = Math.atan2(ball.vy, ball.vx);
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        ctx.rotate(angle);
+        
+        // Cork
+        ctx.fillStyle = '#f5f5dc';
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.r * 0.6, -0.5, Math.PI + 0.5);
-        ctx.stroke();
-    } else {
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        ctx.arc(0, 0, ball.r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Feathers
+        ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.moveTo(ball.x - 7, ball.y);
-        ctx.quadraticCurveTo(ball.x, ball.y + 7, ball.x + 7, ball.y);
+        ctx.moveTo(-ball.r * 0.5, 0);
+        ctx.lineTo(-ball.r * 2, -ball.r);
+        ctx.lineTo(-ball.r * 2, ball.r);
+        ctx.closePath();
+        ctx.fill();
         ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1;
         ctx.stroke();
+        
+        ctx.restore();
+    } else {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fillStyle = mode.ballColor;
+        ctx.fill();
+        
+        if (activeMode === 'tennis') {
+            ctx.strokeStyle = '#9acd32';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r * 0.55, -0.6, Math.PI + 0.6);
+            ctx.stroke();
+        } else {
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(ball.x - ball.r * 0.5, ball.y);
+            ctx.quadraticCurveTo(ball.x, ball.y + ball.r * 0.5, ball.x + ball.r * 0.5, ball.y);
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
 
     // Labels
-    ctx.font = '13px monospace';
+    ctx.font = 'bold 14px monospace';
     ctx.fillStyle = '#fff';
-    ctx.fillText('YOU', player.x + 8, player.y - 8);
-    ctx.fillStyle = '#fcc';
+    ctx.fillText('YOU', player.x + 8, player.y - 10);
+    ctx.fillStyle = '#fdd';
     let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
-    ctx.fillText(oppLabel, opponent.x + 14, opponent.y - 8);
+    ctx.fillText(oppLabel, opponent.x + 16, opponent.y - 10);
 
-    // Tennis bounce indicator
-    if (activeTennisMode && ball.bounceCount === 1 && gameState === 'playing') {
+    // Bounce indicator for tennis
+    if (activeMode === 'tennis' && ball.bounceCount === 1 && gameState === 'playing') {
         ctx.textAlign = 'center';
         ctx.font = 'bold 14px monospace';
         ctx.fillStyle = '#ff6600';
-        ctx.fillText('BOUNCE 1', ball.x, ball.y - 25);
+        ctx.fillText('BOUNCE!', ball.x, ball.y - 28);
         ctx.textAlign = 'left';
     }
 
     // Round over message
     if (gameState === 'roundOver') {
         ctx.textAlign = 'center';
-        ctx.font = 'bold 28px monospace';
+        ctx.font = 'bold 32px monospace';
 
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fillRect(W / 2 - 160, H / 2 - 70, 320, 65);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(W / 2 - 180, H / 2 - 80, 360, 75);
 
-        if (ball.x < NET_X) {
-            ctx.fillStyle = '#ff6666';
-            ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 38);
+        let scoredOnLeft = ball.x < NET_X;
+        if (scoredOnLeft) {
+            ctx.fillStyle = '#ff7777';
+            ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 42);
         } else {
-            ctx.fillStyle = '#66ff66';
-            ctx.fillText('You Score!', W / 2, H / 2 - 38);
+            ctx.fillStyle = '#77ff77';
+            ctx.fillText('You Score!', W / 2, H / 2 - 42);
         }
-        ctx.font = '13px monospace';
+        ctx.font = '14px monospace';
         ctx.fillStyle = '#ddd';
         ctx.fillText('next round starting...', W / 2, H / 2 - 16);
         ctx.textAlign = 'left';
@@ -1541,12 +1791,14 @@ function drawGame() {
     // Action hints
     if (gameState === 'playing' && pDist < HIT_RANGE) {
         ctx.textAlign = 'center';
-        ctx.font = '12px monospace';
-        ctx.fillStyle = 'rgba(255,255,200,0.9)';
+        ctx.font = '13px monospace';
+        ctx.fillStyle = 'rgba(255,255,220,0.95)';
         if (!player.onGround) {
-            ctx.fillText(activeTennisMode ? 'CLICK to SMASH!' : 'CLICK to SPIKE!', W / 2, H - 8);
+            ctx.fillText('CLICK to SMASH!', W / 2, H - 12);
+        } else if (activeMode === 'volleyball') {
+            ctx.fillText('Q = Set  |  CLICK = Bump', W / 2, H - 12);
         } else {
-            ctx.fillText(activeTennisMode ? 'CLICK = Hit' : 'Q = Set  |  CLICK = Bump', W / 2, H - 8);
+            ctx.fillText('CLICK = Hit', W / 2, H - 12);
         }
         ctx.textAlign = 'left';
     }
