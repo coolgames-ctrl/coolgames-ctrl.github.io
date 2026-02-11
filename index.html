@@ -153,7 +153,6 @@ body {
     color: #fff;
 }
 
-/* Settings */
 .settings-container {
     display: flex;
     flex-direction: column;
@@ -161,34 +160,6 @@ body {
     max-height: 400px;
     overflow-y: auto;
     padding: 10px;
-}
-
-.settings-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 320px;
-    padding: 15px 20px;
-    background: #fff;
-    border: 2px solid #ddd;
-    border-radius: 12px;
-}
-
-.settings-option.active {
-    border-color: #4CAF50;
-    background: #e8f5e9;
-}
-
-.settings-label {
-    font-size: 16px;
-    font-weight: 700;
-    color: #222;
-}
-
-.settings-description {
-    font-size: 11px;
-    color: #666;
-    margin-top: 4px;
 }
 
 .radio-group {
@@ -315,7 +286,6 @@ canvas {
     border-radius: 8px;
 }
 
-/* Chat */
 #chatPanel {
     width: 220px;
     height: 520px;
@@ -530,6 +500,7 @@ const GROUND_Y = H - 50;
 const NET_X = W / 2;
 const GRAVITY = 0.35;
 const HIT_RANGE = 90;
+const HAND_SIZE = 12;
 
 // Game settings
 let selectedMode = 'volleyball';
@@ -545,6 +516,8 @@ const MODES = {
         ballColor: '#ffffff',
         playerColor: '#3366ff',
         opponentColor: '#ff4444',
+        handColor: '#2255dd',
+        opponentHandColor: '#dd3333',
         groundColor: '#5a8f3c',
         skyColors: ['#87CEEB', '#d4eef7'],
         ballSize: 16
@@ -557,19 +530,23 @@ const MODES = {
         ballColor: '#ccff00',
         playerColor: '#2e7d32',
         opponentColor: '#c62828',
+        handColor: '#1b5e20',
+        opponentHandColor: '#b71c1c',
         groundColor: '#1565c0',
         skyColors: ['#4fc3f7', '#81d4fa'],
         ballSize: 14
     },
     badminton: {
-        netHeight: 160,
+        netHeight: 155,
         maxTouches: 1,
         allowBounce: false,
-        ballGravity: 0.18,
-        shuttleDrag: 0.98,
+        ballGravity: 0.12,
+        shuttleDrag: 0.992,
         ballColor: '#ffffff',
         playerColor: '#6a1b9a',
         opponentColor: '#00838f',
+        handColor: '#4a148c',
+        opponentHandColor: '#006064',
         groundColor: '#43a047',
         skyColors: ['#fff8e1', '#ffecb3'],
         ballSize: 12
@@ -586,7 +563,7 @@ let serveSide = 'player';
 let gameState = 'menu';
 let roundTimer = 0;
 let gameMode = 'solo';
-let pointScored = false; // Flag to prevent multiple score calls
+let pointScored = false;
 
 // Touch tracking
 let playerTouches = 0;
@@ -765,7 +742,6 @@ gameModeGroup.addEventListener('click', (e) => {
     }
 });
 
-// Load saved settings
 const savedMode = localStorage.getItem('gameMode');
 if (savedMode && MODES[savedMode]) {
     selectedMode = savedMode;
@@ -802,7 +778,6 @@ function createLobby() {
         gameMode = 'host';
         
         conn.on('open', () => {
-            console.log('Host: connection opened');
             setupConnectionHandlers();
         });
         
@@ -812,7 +787,6 @@ function createLobby() {
     });
     
     peer.on('error', (err) => {
-        console.error('Peer error:', err);
         if (err.type === 'unavailable-id') {
             document.getElementById('waitingStatus').innerHTML = '<span class="error-text">Code taken, retrying...</span>';
             setTimeout(() => {
@@ -838,16 +812,12 @@ function joinLobby() {
     peer = new Peer();
     
     peer.on('open', () => {
-        console.log('Client peer opened, connecting to host...');
         conn = peer.connect('vball-' + code, { reliable: true });
         
         conn.on('open', () => {
-            console.log('Client: connection opened');
             isHost = false;
             gameMode = 'client';
             setupConnectionHandlers();
-            
-            console.log('Client: sending ready signal');
             conn.send({ type: 'ready', selectedMode: selectedMode });
         });
         
@@ -856,14 +826,12 @@ function joinLobby() {
         });
         
         conn.on('error', (err) => {
-            console.error('Connection error:', err);
             document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Connection failed</span>';
             document.getElementById('connectBtn').disabled = false;
         });
     });
     
     peer.on('error', (err) => {
-        console.error('Peer error:', err);
         document.getElementById('lobbyStatus').innerHTML = '<span class="error-text">Lobby not found</span>';
         document.getElementById('connectBtn').disabled = false;
     });
@@ -884,22 +852,22 @@ function setupConnectionHandlers() {
 }
 
 function handleNetworkData(data) {
-    console.log('Received:', data.type);
-    
     if (data.type === 'ready' && isHost) {
         opponentSelectedMode = data.selectedMode;
-        console.log('Host: client is ready, their mode:', opponentSelectedMode);
         startMultiplayerGame();
     } else if (data.type === 'start' && !isHost) {
         opponentSelectedMode = data.selectedMode;
         activeMode = (selectedMode === opponentSelectedMode) ? selectedMode : 'volleyball';
-        console.log('Client: received start signal, active mode:', activeMode);
         beginGame();
     } else if (data.type === 'state' && !isHost) {
         player.x = W - data.opponent.x - player.w;
         player.y = data.opponent.y;
+        player.handAction = data.opponent.handAction || 'idle';
+        player.handTimer = data.opponent.handTimer || 0;
         opponent.x = W - data.player.x - opponent.w;
         opponent.y = data.player.y;
+        opponent.handAction = data.player.handAction || 'idle';
+        opponent.handTimer = data.player.handTimer || 0;
         ball.x = W - data.ball.x;
         ball.y = data.ball.y;
         ball.vx = -data.ball.vx;
@@ -923,8 +891,8 @@ function sendState() {
     if (conn && conn.open && isHost) {
         conn.send({
             type: 'state',
-            player: { x: player.x, y: player.y },
-            opponent: { x: opponent.x, y: opponent.y },
+            player: { x: player.x, y: player.y, handAction: player.handAction, handTimer: player.handTimer },
+            opponent: { x: opponent.x, y: opponent.y, handAction: opponent.handAction, handTimer: opponent.handTimer },
             ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
             playerScore: playerScore,
             opponentScore: opponentScore,
@@ -977,7 +945,6 @@ function beginGame() {
         addChatMessage(`Playing ${activeMode} vs AI`, 'system');
     }
     
-    // Update controls hint
     if (activeMode === 'volleyball') {
         document.getElementById('info').textContent = 'A / D = move | W / SPACE = jump | Q = set | CLICK = bump | JUMP + CLICK = spike';
     } else if (activeMode === 'tennis') {
@@ -1004,23 +971,13 @@ function cleanupPeer() {
 
 // ==================== INPUT ====================
 document.addEventListener('keydown', e => {
-    if (document.activeElement.tagName === 'INPUT') {
-        return;
-    }
+    if (document.activeElement.tagName === 'INPUT') return;
     
     keys[e.key.toLowerCase()] = true;
     
-    if (e.key.toLowerCase() === 'q') {
-        setPressed = true;
-    }
-    
-    if (e.key === 'Escape' && (gameState === 'playing' || gameState === 'roundOver')) {
-        exitToMenu();
-    }
-    
-    if (gameState === 'playing' || gameState === 'roundOver') {
-        e.preventDefault();
-    }
+    if (e.key.toLowerCase() === 'q') setPressed = true;
+    if (e.key === 'Escape' && (gameState === 'playing' || gameState === 'roundOver')) exitToMenu();
+    if (gameState === 'playing' || gameState === 'roundOver') e.preventDefault();
 });
 
 document.addEventListener('keyup', e => {
@@ -1032,67 +989,35 @@ canvas.addEventListener('mousedown', e => {
     clickedThisFrame = true;
 });
 
-// Menu buttons
-document.getElementById('createBtn').addEventListener('click', () => {
-    initAudio();
-    createLobby();
-});
-
+document.getElementById('createBtn').addEventListener('click', () => { initAudio(); createLobby(); });
 document.getElementById('joinBtn').addEventListener('click', () => {
     initAudio();
     document.getElementById('lobbyStatus').textContent = '';
     document.getElementById('lobbyInput').value = '';
     document.getElementById('connectBtn').disabled = false;
     showScreen('lobbyScreen');
-    setTimeout(() => {
-        document.getElementById('lobbyInput').focus();
-    }, 100);
+    setTimeout(() => document.getElementById('lobbyInput').focus(), 100);
 });
-
 document.getElementById('soloBtn').addEventListener('click', () => {
     initAudio();
     gameMode = 'solo';
     activeMode = selectedMode;
     beginGame();
 });
-
-document.getElementById('settingsBtn').addEventListener('click', () => {
-    showScreen('settingsScreen');
-});
-
-document.getElementById('settingsBackBtn').addEventListener('click', () => {
-    showScreen('menuScreen');
-});
-
-document.getElementById('connectBtn').addEventListener('click', () => {
-    initAudio();
-    joinLobby();
-});
-
-document.getElementById('lobbyBackBtn').addEventListener('click', () => {
-    cleanupPeer();
-    showScreen('menuScreen');
-});
-
-document.getElementById('waitingBackBtn').addEventListener('click', () => {
-    cleanupPeer();
-    showScreen('menuScreen');
-});
-
+document.getElementById('settingsBtn').addEventListener('click', () => showScreen('settingsScreen'));
+document.getElementById('settingsBackBtn').addEventListener('click', () => showScreen('menuScreen'));
+document.getElementById('connectBtn').addEventListener('click', () => { initAudio(); joinLobby(); });
+document.getElementById('lobbyBackBtn').addEventListener('click', () => { cleanupPeer(); showScreen('menuScreen'); });
+document.getElementById('waitingBackBtn').addEventListener('click', () => { cleanupPeer(); showScreen('menuScreen'); });
 document.getElementById('exitGameBtn').addEventListener('click', exitToMenu);
-
-document.getElementById('lobbyInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        initAudio();
-        joinLobby();
-    }
-});
+document.getElementById('lobbyInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') { initAudio(); joinLobby(); } });
 
 // ==================== ENTITIES ====================
 const player = {
     x: 150, y: GROUND_Y - 55, w: 55, h: 55,
     vx: 0, vy: 0, speed: 4, jumpPower: -9,
-    onGround: true, facingRight: true
+    onGround: true, facingRight: true,
+    handAction: 'idle', handTimer: 0
 };
 
 const opponent = {
@@ -1101,7 +1026,8 @@ const opponent = {
     onGround: true,
     actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
     personality: 0, lastDecision: 0, mistakeChance: 0,
-    pendingAction: null, actionTimer: 0
+    pendingAction: null, actionTimer: 0,
+    handAction: 'idle', handTimer: 0
 };
 
 const ball = {
@@ -1109,6 +1035,59 @@ const ball = {
     vx: 0, vy: 0,
     lastHitBy: null, bounceCount: 0
 };
+
+// ==================== HAND ANIMATION ====================
+function triggerHandAction(entity, action) {
+    entity.handAction = action;
+    entity.handTimer = action === 'idle' ? 0 : 20;
+}
+
+function updateHands(entity) {
+    if (entity.handTimer > 0) {
+        entity.handTimer--;
+        if (entity.handTimer <= 0) {
+            entity.handAction = 'idle';
+        }
+    }
+}
+
+function getHandPositions(entity, facingLeft) {
+    const cx = entity.x + entity.w / 2;
+    const cy = entity.y + entity.h / 2;
+    const action = entity.handAction;
+    const t = entity.handTimer;
+    
+    let leftHand = { x: 0, y: 0 };
+    let rightHand = { x: 0, y: 0 };
+    
+    const dir = facingLeft ? -1 : 1;
+    
+    if (action === 'idle') {
+        leftHand = { x: cx - 32 * dir, y: cy + 5 };
+        rightHand = { x: cx + 32 * dir, y: cy + 5 };
+    } else if (action === 'set') {
+        const lift = Math.sin((20 - t) / 20 * Math.PI) * 25;
+        leftHand = { x: cx - 15, y: entity.y - 5 - lift };
+        rightHand = { x: cx + 15, y: entity.y - 5 - lift };
+    } else if (action === 'hit') {
+        const swing = Math.sin((20 - t) / 20 * Math.PI);
+        leftHand = { x: cx + (25 * dir * swing), y: cy - 10 + swing * 15 };
+        rightHand = { x: cx + (35 * dir * swing), y: cy - 5 + swing * 15 };
+    } else if (action === 'smash') {
+        const phase = (20 - t) / 20;
+        if (phase < 0.3) {
+            const lift = phase / 0.3;
+            leftHand = { x: cx - 10, y: entity.y - 10 - lift * 30 };
+            rightHand = { x: cx + 10, y: entity.y - 10 - lift * 30 };
+        } else {
+            const swing = (phase - 0.3) / 0.7;
+            leftHand = { x: cx + (30 * dir * swing), y: entity.y - 40 + swing * 55 };
+            rightHand = { x: cx + (40 * dir * swing), y: entity.y - 40 + swing * 55 };
+        }
+    }
+    
+    return { left: leftHand, right: rightHand };
+}
 
 // ==================== GAME LOGIC ====================
 function updateScoreDisplay() {
@@ -1128,22 +1107,19 @@ function resetRound() {
     const mode = getModeSettings();
     
     player.x = 180; player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
+    player.handAction = 'idle'; player.handTimer = 0;
     opponent.x = W - 240; opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
-    opponent.actionCooldown = 0;
-    opponent.hitCount = 0;
+    opponent.actionCooldown = 0; opponent.hitCount = 0;
     opponent.personality = Math.random();
     opponent.mistakeChance = 0.08 + Math.random() * 0.07;
-    opponent.pendingAction = null;
-    opponent.actionTimer = 0;
+    opponent.pendingAction = null; opponent.actionTimer = 0;
+    opponent.handAction = 'idle'; opponent.handTimer = 0;
 
-    ball.vy = 0;
-    ball.vx = 0;
-    ball.lastHitBy = null;
-    ball.bounceCount = 0;
+    ball.vy = 0; ball.vx = 0;
+    ball.lastHitBy = null; ball.bounceCount = 0;
     ball.r = mode.ballSize;
     
-    playerTouches = 0;
-    opponentTouches = 0;
+    playerTouches = 0; opponentTouches = 0;
     lastTouchSide = null;
     pointScored = false;
     
@@ -1158,18 +1134,11 @@ function resetRound() {
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-function dist(x1, y1, x2, y2) {
-    let dx = x1 - x2, dy = y1 - y2;
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
-function ballCenter(rect) {
-    return dist(rect.x + rect.w / 2, rect.y + rect.h / 2, ball.x, ball.y);
-}
+function dist(x1, y1, x2, y2) { return Math.sqrt((x1-x2)**2 + (y1-y2)**2); }
+function ballCenter(rect) { return dist(rect.x + rect.w/2, rect.y + rect.h/2, ball.x, ball.y); }
 
 function capBallSpeed(maxSpd) {
-    let spd = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    let spd = Math.sqrt(ball.vx**2 + ball.vy**2);
     if (spd > maxSpd) {
         ball.vx = (ball.vx / spd) * maxSpd;
         ball.vy = (ball.vy / spd) * maxSpd;
@@ -1183,30 +1152,19 @@ function registerTouch(isPlayer) {
     const side = isPlayer ? 'player' : 'opponent';
     
     if (lastTouchSide !== side) {
-        if (isPlayer) {
-            playerTouches = 1;
-        } else {
-            opponentTouches = 1;
-        }
+        if (isPlayer) playerTouches = 1;
+        else opponentTouches = 1;
         lastTouchSide = side;
     } else {
-        if (isPlayer) {
-            playerTouches++;
-        } else {
-            opponentTouches++;
-        }
+        if (isPlayer) playerTouches++;
+        else opponentTouches++;
     }
     
     ball.bounceCount = 0;
     updateScoreDisplay();
     
-    // Check for too many touches
-    if (isPlayer && playerTouches > mode.maxTouches) {
-        return false;
-    }
-    if (!isPlayer && opponentTouches > mode.maxTouches) {
-        return false;
-    }
+    if (isPlayer && playerTouches > mode.maxTouches) return false;
+    if (!isPlayer && opponentTouches > mode.maxTouches) return false;
     
     return true;
 }
@@ -1223,6 +1181,7 @@ function doSet(rect, direction) {
         return false;
     }
     
+    triggerHandAction(rect, 'set');
     ball.vx = direction * 1.5;
     ball.vy = -10;
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
@@ -1242,10 +1201,19 @@ function doHit(rect, direction) {
         return false;
     }
     
-    ball.vx = direction * 7;
-    ball.vy = -8;
+    triggerHandAction(rect, 'hit');
+    
+    // Badminton-specific: higher arc and stronger hit
+    if (activeMode === 'badminton') {
+        ball.vx = direction * 10;
+        ball.vy = -9;
+    } else {
+        ball.vx = direction * 7;
+        ball.vy = -8;
+    }
+    
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
-    capBallSpeed(12);
+    capBallSpeed(activeMode === 'badminton' ? 14 : 12);
     playSound('hit');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'hit' });
     return true;
@@ -1265,14 +1233,26 @@ function doSmash(rect, direction) {
         return false;
     }
     
-    let distToNet = Math.abs(ball.x - NET_X);
-    let smashVx = direction * (9 + Math.min(distToNet / 50, 3));
-    let smashVy = activeMode === 'badminton' ? 5 : (3 + (ball.y < netTop ? 3 : 1));
+    triggerHandAction(rect, 'smash');
     
-    ball.vx = smashVx;
-    ball.vy = smashVy;
+    let distToNet = Math.abs(ball.x - NET_X);
+    
+    // Badminton-specific: steeper angle but still clears net
+    if (activeMode === 'badminton') {
+        let smashVx = direction * 14;
+        // If we're high enough above net, smash down; otherwise hit flat
+        let smashVy = ball.y < netTop - 40 ? 4 : -2;
+        ball.vx = smashVx;
+        ball.vy = smashVy;
+    } else {
+        let smashVx = direction * (9 + Math.min(distToNet / 50, 3));
+        let smashVy = 3 + (ball.y < netTop ? 3 : 1);
+        ball.vx = smashVx;
+        ball.vy = smashVy;
+    }
+    
     ball.lastHitBy = isPlayer ? 'player' : 'opponent';
-    capBallSpeed(14);
+    capBallSpeed(activeMode === 'badminton' ? 16 : 14);
     playSound('smash');
     if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'smash' });
     return true;
@@ -1281,15 +1261,14 @@ function doSmash(rect, direction) {
 function rectCircleCollision(rx, ry, rw, rh, cx, cy, cr) {
     let closestX = clamp(cx, rx, rx + rw);
     let closestY = clamp(cy, ry, ry + rh);
-    let dx = cx - closestX, dy = cy - closestY;
-    return (dx * dx + dy * dy) < (cr * cr);
+    return dist(cx, cy, closestX, closestY) < cr;
 }
 
 function pushBallOutOfRect(rect) {
     let closestX = clamp(ball.x, rect.x, rect.x + rect.w);
     let closestY = clamp(ball.y, rect.y, rect.y + rect.h);
     let dx = ball.x - closestX, dy = ball.y - closestY;
-    let d = Math.sqrt(dx * dx + dy * dy);
+    let d = Math.sqrt(dx*dx + dy*dy);
     if (d === 0) { dx = 0; dy = -1; d = 1; }
     let overlap = ball.r - d;
     if (overlap > 0) {
@@ -1300,6 +1279,8 @@ function pushBallOutOfRect(rect) {
 
 // ==================== PLAYER ====================
 function updatePlayer() {
+    updateHands(player);
+    
     player.vx = 0;
     if (keys['a']) { player.vx = -player.speed; player.facingRight = false; }
     if (keys['d']) { player.vx = player.speed; player.facingRight = true; }
@@ -1335,6 +1316,8 @@ function updatePlayer() {
 
 // ==================== OPPONENT ====================
 function updateOpponent() {
+    updateHands(opponent);
+    
     if (gameMode === 'host') {
         opponent.vx = 0;
         if (remoteInput.left) opponent.vx = opponent.speed;
@@ -1374,7 +1357,6 @@ function updateOpponent() {
 }
 
 function updateAI() {
-    // Don't process AI during round over
     if (gameState !== 'playing' || pointScored) {
         opponent.vx = 0;
         opponent.pendingAction = null;
@@ -1391,11 +1373,9 @@ function updateAI() {
     let ballOnMySide = ball.x > NET_X;
     let distToB = ballCenter(opponent);
 
-    // Predict where ball will land
-    let predictX = ball.x;
-    let predictY = ball.y;
-    let pvx = ball.vx;
-    let pvy = ball.vy;
+    // Predict landing
+    let predictX = ball.x, predictY = ball.y;
+    let pvx = ball.vx, pvy = ball.vy;
     for (let i = 0; i < 80; i++) {
         pvy += mode.ballGravity;
         if (activeMode === 'badminton') pvx *= mode.shuttleDrag;
@@ -1404,7 +1384,6 @@ function updateAI() {
         if (predictY >= GROUND_Y - 20) break;
     }
 
-    // Decision making for positioning
     if (opponent.lastDecision > 25 + Math.random() * 15) {
         opponent.lastDecision = 0;
         
@@ -1425,18 +1404,14 @@ function updateAI() {
 
     opponent.targetX = clamp(opponent.targetX, NET_X + 12, W - opponent.w - 12);
 
-    // Movement
     let diff = opponent.targetX - opponent.x;
-    let moveThreshold = 8 + Math.random() * 5;
-    
-    if (Math.abs(diff) > moveThreshold) {
-        let speedMod = 0.85 + Math.random() * 0.3;
-        opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * speedMod;
+    if (Math.abs(diff) > 8 + Math.random() * 5) {
+        opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * (0.85 + Math.random() * 0.3);
     } else {
         opponent.vx = 0;
     }
 
-    // Handle pending action with timer (instead of setTimeout)
+    // Handle pending action
     if (opponent.pendingAction && opponent.actionTimer > 0) {
         opponent.actionTimer--;
         if (opponent.actionTimer <= 0 && gameState === 'playing' && !pointScored) {
@@ -1465,23 +1440,20 @@ function updateAI() {
         }
     }
 
-    // Decision making for actions
+    // Decision making
     if (ballOnMySide && opponent.actionCooldown <= 0 && !opponent.pendingAction) {
         let ballComingDown = ball.vy > 0;
         let ballNear = distToB < HIT_RANGE + 25;
         let ballAbove = ball.y < opponent.y;
         let ballHigh = ball.y < netTop - 20;
 
-        // Jump decision
         if (ballAbove && ballComingDown && distToB < 180 && opponent.onGround) {
-            let shouldJump = ball.y < netTop + 100;
-            if (shouldJump && Math.random() > 0.15 && !opponent.pendingAction) {
+            if (ball.y < netTop + 100 && Math.random() > 0.15 && !opponent.pendingAction) {
                 opponent.pendingAction = 'jump';
                 opponent.actionTimer = Math.floor(Math.random() * 6) + 1;
             }
         }
 
-        // Hit decision
         if (ballNear && (ballAbove || ball.y < opponent.y + 30) && !opponent.pendingAction) {
             if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40) {
                 if (Math.random() > 0.2) {
@@ -1499,14 +1471,12 @@ function updateAI() {
             }
         }
 
-        // Emergency hit when ball is low
         if (ballNear && ball.y > netTop + 50 && ballComingDown && !opponent.pendingAction) {
             opponent.pendingAction = 'hit';
             opponent.actionTimer = 1;
         }
     }
 
-    // Reset hit count when ball goes to other side
     if (!ballOnMySide) {
         opponent.hitCount = 0;
         opponent.pendingAction = null;
@@ -1530,9 +1500,9 @@ function updateBall() {
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    capBallSpeed(14);
+    capBallSpeed(16);
 
-    // Wall collisions
+    // Walls
     if (ball.x - ball.r < 0) {
         ball.x = ball.r;
         ball.vx = Math.abs(ball.vx) * 0.7;
@@ -1549,7 +1519,7 @@ function updateBall() {
         playSound('bounce');
     }
 
-    // Net collision
+    // Net
     let hitNet = false;
     if (ball.y + ball.r > netTop && ball.y - ball.r < GROUND_Y) {
         if (ball.x - ball.r < NET_X + 5 && ball.x + ball.r > NET_X - 5) {
@@ -1570,18 +1540,15 @@ function updateBall() {
     }
     if (hitNet) playSound('net');
 
-    // Reset touches when ball crosses net
+    // Track side crossings
     let currentSide = ball.x < NET_X ? 'player' : 'opponent';
     if (lastTouchSide && currentSide !== lastTouchSide) {
-        if (currentSide === 'player') {
-            playerTouches = 0;
-        } else {
-            opponentTouches = 0;
-        }
+        if (currentSide === 'player') playerTouches = 0;
+        else opponentTouches = 0;
         updateScoreDisplay();
     }
 
-    // Player collision
+    // Player collisions
     if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
         pushBallOutOfRect(player);
         ball.vy = Math.min(ball.vy, -2);
@@ -1593,7 +1560,7 @@ function updateBall() {
         playSound('bounce');
     }
 
-    // Ground - scoring
+    // Ground
     if (ball.y + ball.r >= GROUND_Y) {
         if (mode.allowBounce && ball.bounceCount < 1) {
             ball.bounceCount++;
@@ -1603,8 +1570,7 @@ function updateBall() {
             playSound('bounce');
             updateScoreDisplay();
         } else {
-            let scorerIsPlayer = ball.x >= NET_X;
-            scorePoint(scorerIsPlayer);
+            scorePoint(ball.x >= NET_X);
         }
     }
 }
@@ -1615,10 +1581,7 @@ function scorePoint(playerScored) {
     pointScored = true;
     gameState = 'roundOver';
     roundTimer = 100;
-
-    // Stop ball movement
-    ball.vy = 0;
-    ball.vx = 0;
+    ball.vy = 0; ball.vx = 0;
     ball.y = Math.min(ball.y, GROUND_Y - ball.r);
 
     if (playerScored) {
@@ -1630,11 +1593,57 @@ function scorePoint(playerScored) {
         serveSide = 'player';
         playSound('lose');
     }
-    
     updateScoreDisplay();
 }
 
 // ==================== DRAWING ====================
+function drawPlayer(entity, mode, facingLeft, label) {
+    const hands = getHandPositions(entity, facingLeft);
+    const handColor = entity === player ? mode.handColor : mode.opponentHandColor;
+    const bodyColor = entity === player ? mode.playerColor : mode.opponentColor;
+    
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(entity.x + entity.w/2, GROUND_Y + 2, entity.w * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Hands (behind body for some positions)
+    ctx.fillStyle = handColor;
+    if (entity.handAction === 'set' || (entity.handAction === 'smash' && entity.handTimer > 14)) {
+        ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+        ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+    }
+    
+    // Body
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(entity.x, entity.y, entity.w, entity.h);
+    
+    // Eye
+    ctx.fillStyle = '#fff';
+    if (facingLeft) {
+        ctx.fillRect(entity.x + 9, entity.y + 14, 14, 14);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(entity.x + 12, entity.y + 18, 5, 5);
+    } else {
+        ctx.fillRect(entity.x + 32, entity.y + 14, 14, 14);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(entity.x + 38, entity.y + 18, 5, 5);
+    }
+    
+    // Hands (in front for other positions)
+    ctx.fillStyle = handColor;
+    if (entity.handAction !== 'set' && !(entity.handAction === 'smash' && entity.handTimer > 14)) {
+        ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+        ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
+    }
+    
+    // Label
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = entity === player ? '#fff' : '#fdd';
+    ctx.fillText(label, entity.x + (facingLeft ? 16 : 8), entity.y - 10);
+}
+
 function drawGame() {
     const mode = getModeSettings();
     const netTop = GROUND_Y - mode.netHeight;
@@ -1657,13 +1666,6 @@ function drawGame() {
         ctx.beginPath();
         ctx.moveTo(30, GROUND_Y);
         ctx.lineTo(W - 30, GROUND_Y);
-        ctx.stroke();
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(120, GROUND_Y);
-        ctx.lineTo(120, GROUND_Y + 50);
-        ctx.moveTo(W - 120, GROUND_Y);
-        ctx.lineTo(W - 120, GROUND_Y + 50);
         ctx.stroke();
     } else if (activeMode === 'badminton') {
         ctx.strokeStyle = '#fff';
@@ -1689,8 +1691,6 @@ function drawGame() {
     ctx.fillRect(NET_X - 4, netTop, 8, mode.netHeight);
     ctx.fillStyle = '#fff';
     ctx.fillRect(NET_X - 8, netTop - 5, 16, 10);
-    
-    // Net pattern
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 1;
     for (let ny = netTop + 12; ny < GROUND_Y; ny += 12) {
@@ -1704,7 +1704,7 @@ function drawGame() {
     let pDist = ballCenter(player);
     if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
         ctx.beginPath();
-        ctx.arc(player.x + player.w / 2, player.y + player.h / 2, HIT_RANGE, 0, Math.PI * 2);
+        ctx.arc(player.x + player.w/2, player.y + player.h/2, HIT_RANGE, 0, Math.PI * 2);
         ctx.strokeStyle = pDist < HIT_RANGE ? 'rgba(255,255,100,0.4)' : 'rgba(255,255,255,0.15)';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
@@ -1712,30 +1712,9 @@ function drawGame() {
         ctx.setLineDash([]);
     }
 
-    // Shadows
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.beginPath();
-    ctx.ellipse(player.x + player.w/2, GROUND_Y + 2, player.w * 0.4, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(opponent.x + opponent.w/2, GROUND_Y + 2, opponent.w * 0.4, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Player
-    ctx.fillStyle = mode.playerColor;
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(player.x + 32, player.y + 14, 14, 14);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(player.x + 38, player.y + 18, 5, 5);
-
-    // Opponent
-    ctx.fillStyle = mode.opponentColor;
-    ctx.fillRect(opponent.x, opponent.y, opponent.w, opponent.h);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(opponent.x + 9, opponent.y + 14, 14, 14);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(opponent.x + 12, opponent.y + 18, 5, 5);
+    // Draw players with hands
+    drawPlayer(player, mode, false, 'YOU');
+    drawPlayer(opponent, mode, true, gameMode === 'solo' ? 'AI' : 'P2');
 
     // Ball shadow
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
@@ -1750,18 +1729,16 @@ function drawGame() {
         ctx.translate(ball.x, ball.y);
         ctx.rotate(angle);
         
-        // Cork
         ctx.fillStyle = '#f5f5dc';
         ctx.beginPath();
         ctx.arc(0, 0, ball.r * 0.7, 0, Math.PI * 2);
         ctx.fill();
         
-        // Feathers
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.moveTo(-ball.r * 0.5, 0);
-        ctx.lineTo(-ball.r * 2, -ball.r);
-        ctx.lineTo(-ball.r * 2, ball.r);
+        ctx.lineTo(-ball.r * 2.2, -ball.r * 1.1);
+        ctx.lineTo(-ball.r * 2.2, ball.r * 1.1);
         ctx.closePath();
         ctx.fill();
         ctx.strokeStyle = '#ddd';
@@ -1794,15 +1771,7 @@ function drawGame() {
         }
     }
 
-    // Labels
-    ctx.font = 'bold 14px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText('YOU', player.x + 8, player.y - 10);
-    ctx.fillStyle = '#fdd';
-    let oppLabel = gameMode === 'solo' ? 'AI' : 'P2';
-    ctx.fillText(oppLabel, opponent.x + 16, opponent.y - 10);
-
-    // Bounce indicator for tennis
+    // Bounce indicator
     if (activeMode === 'tennis' && ball.bounceCount === 1 && gameState === 'playing') {
         ctx.textAlign = 'center';
         ctx.font = 'bold 14px monospace';
@@ -1811,25 +1780,23 @@ function drawGame() {
         ctx.textAlign = 'left';
     }
 
-    // Round over message
+    // Round over
     if (gameState === 'roundOver') {
         ctx.textAlign = 'center';
         ctx.font = 'bold 32px monospace';
-
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(W / 2 - 180, H / 2 - 80, 360, 75);
+        ctx.fillRect(W/2 - 180, H/2 - 80, 360, 75);
 
-        let scoredOnLeft = ball.x < NET_X;
-        if (scoredOnLeft) {
+        if (ball.x < NET_X) {
             ctx.fillStyle = '#ff7777';
-            ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W / 2, H / 2 - 42);
+            ctx.fillText(gameMode === 'solo' ? 'AI Scores!' : 'P2 Scores!', W/2, H/2 - 42);
         } else {
             ctx.fillStyle = '#77ff77';
-            ctx.fillText('You Score!', W / 2, H / 2 - 42);
+            ctx.fillText('You Score!', W/2, H/2 - 42);
         }
         ctx.font = '14px monospace';
         ctx.fillStyle = '#ddd';
-        ctx.fillText('next round starting...', W / 2, H / 2 - 16);
+        ctx.fillText('next round starting...', W/2, H/2 - 16);
         ctx.textAlign = 'left';
     }
 
@@ -1839,11 +1806,11 @@ function drawGame() {
         ctx.font = '13px monospace';
         ctx.fillStyle = 'rgba(255,255,220,0.95)';
         if (!player.onGround) {
-            ctx.fillText('CLICK to SMASH!', W / 2, H - 12);
+            ctx.fillText('CLICK to SMASH!', W/2, H - 12);
         } else if (activeMode === 'volleyball') {
-            ctx.fillText('Q = Set  |  CLICK = Bump', W / 2, H - 12);
+            ctx.fillText('Q = Set  |  CLICK = Bump', W/2, H - 12);
         } else {
-            ctx.fillText('CLICK = Hit', W / 2, H - 12);
+            ctx.fillText('CLICK = Hit', W/2, H - 12);
         }
         ctx.textAlign = 'left';
     }
@@ -1863,11 +1830,8 @@ function gameLoop(timestamp) {
             updateBall();
             drawGame();
 
-            if (gameMode === 'host') {
-                sendState();
-            } else if (gameMode === 'client') {
-                sendInput();
-            }
+            if (gameMode === 'host') sendState();
+            else if (gameMode === 'client') sendInput();
 
             if (gameState === 'roundOver') {
                 roundTimer--;
