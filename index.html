@@ -58,37 +58,12 @@ body {
     margin: 8px 0;
 }
 
-.menu-button:hover {
-    background: #444;
-    transform: scale(1.05);
-}
-
-.menu-button:active {
-    transform: scale(0.98);
-}
-
-.menu-button:disabled {
-    background: #999;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.menu-button.secondary {
-    background: #fff;
-    color: #222;
-    border: 2px solid #222;
-}
-
-.menu-button.secondary:hover {
-    background: #222;
-    color: #fff;
-}
-
-.menu-button.small {
-    width: 120px;
-    height: 40px;
-    font-size: 14px;
-}
+.menu-button:hover { background: #444; transform: scale(1.05); }
+.menu-button:active { transform: scale(0.98); }
+.menu-button:disabled { background: #999; cursor: not-allowed; transform: none; }
+.menu-button.secondary { background: #fff; color: #222; border: 2px solid #222; }
+.menu-button.secondary:hover { background: #222; color: #fff; }
+.menu-button.small { width: 120px; height: 40px; font-size: 14px; }
 
 #lobbyTitle, #waitingTitle, #settingsTitle {
     font-size: 28px;
@@ -111,16 +86,8 @@ body {
     background: #fff;
 }
 
-#lobbyInput:focus {
-    outline: none;
-    border-color: #3366ff;
-}
-
-#lobbyStatus, #waitingStatus {
-    color: #666;
-    margin-top: 20px;
-    font-size: 14px;
-}
+#lobbyInput:focus { outline: none; border-color: #3366ff; }
+#lobbyStatus, #waitingStatus { color: #666; margin-top: 20px; font-size: 14px; }
 
 #lobbyCode {
     font-size: 48px;
@@ -148,10 +115,7 @@ body {
     transition: all 0.2s ease;
 }
 
-.back-button:hover {
-    background: #222;
-    color: #fff;
-}
+.back-button:hover { background: #222; color: #fff; }
 
 .settings-container {
     display: flex;
@@ -162,11 +126,7 @@ body {
     padding: 10px;
 }
 
-.radio-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+.radio-group { display: flex; flex-direction: column; gap: 10px; }
 
 .radio-option {
     display: flex;
@@ -225,19 +185,8 @@ body {
     margin-bottom: 10px;
 }
 
-#gameHeaderLeft {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-#score { 
-    color: #222;
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: 8px;
-}
-
+#gameHeaderLeft { display: flex; align-items: center; gap: 15px; }
+#score { color: #222; font-size: 32px; font-weight: 700; letter-spacing: 8px; }
 #mode-indicator { font-size: 14px; color: #666; }
 
 #touchIndicator {
@@ -250,12 +199,7 @@ body {
 }
 
 .game-wrapper { display: flex; gap: 15px; }
-
-canvas { 
-    border: 2px solid #222;
-    cursor: crosshair;
-    border-radius: 8px;
-}
+canvas { border: 2px solid #222; cursor: crosshair; border-radius: 8px; }
 
 #chatPanel {
     width: 220px;
@@ -286,13 +230,7 @@ canvas {
     gap: 8px;
 }
 
-.chat-message {
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    word-wrap: break-word;
-}
-
+.chat-message { padding: 8px 10px; border-radius: 8px; font-size: 12px; word-wrap: break-word; }
 .chat-message.you { background: #e3f2fd; align-self: flex-end; max-width: 85%; }
 .chat-message.opponent { background: #ffebee; align-self: flex-start; max-width: 85%; }
 .chat-message.system { background: #f5f5f5; align-self: center; color: #666; font-style: italic; text-align: center; }
@@ -372,7 +310,7 @@ canvas {
                 <div class="radio-circle"></div>
                 <div class="radio-text">
                     <div class="radio-title">🏀 Basketball</div>
-                    <div class="radio-desc">Score in hoops, RIGHT CLICK to shoot</div>
+                    <div class="radio-desc">Hold RIGHT CLICK to shoot, dunk near hoop</div>
                 </div>
             </div>
         </div>
@@ -463,12 +401,12 @@ const MODES = {
     },
     basketball: {
         netHeight: 0, maxTouches: 999, allowBounce: true,
-        ballGravity: 0.3, ballColor: '#ff6600',
+        ballGravity: 0.35, ballColor: '#ff6600',
         playerColor: '#1565c0', opponentColor: '#c62828',
         handColor: '#0d47a1', opponentHandColor: '#b71c1c',
         groundColor: '#d7a86e', skyColors: ['#424242', '#616161'],
         ballSize: 18, hasRacket: false,
-        hoopHeight: 140, hoopWidth: 45
+        hoopHeight: 140, hoopWidth: 50
     }
 };
 
@@ -490,66 +428,28 @@ let opponentSelectedMode = 'volleyball';
 
 const keys = {};
 let clickedThisFrame = false;
-let rightClickedThisFrame = false;
+let rightClickDown = false;
+let rightClickReleased = false;
 let setPressed = false;
-let remoteInput = { left: false, right: false, jump: false, set: false, click: false, rightClick: false };
+let remoteInput = { left: false, right: false, jump: false, set: false, click: false, rightClickDown: false, rightClickReleased: false };
 
 // AI Learning System
 const aiMemory = {
-    playerPatterns: {
-        avgHitPosX: 0.3,
-        avgHitPosY: 0.5,
-        spikeFrequency: 0.3,
-        preferredSide: 0,
-        hitCount: 0
-    },
-    mistakes: {
-        missedBalls: 0,
-        badPositioning: 0,
-        tooSlowReaction: 0
-    },
-    successfulMoves: {
-        spikes: 0,
-        sets: 0,
-        saves: 0
-    },
-    adaptations: {
-        reactionSpeed: 1,
-        aggressiveness: 0.5,
-        positioningBias: 0
-    }
+    playerPatterns: { avgHitPosX: 0.3, avgHitPosY: 0.5, spikeFrequency: 0.3, hitCount: 0 },
+    adaptations: { reactionSpeed: 1, aggressiveness: 0.5, positioningBias: 0 }
 };
 
 function updateAILearning(event, data) {
-    switch(event) {
-        case 'playerHit':
-            const m = aiMemory.playerPatterns;
-            m.hitCount++;
-            m.avgHitPosX = (m.avgHitPosX * (m.hitCount - 1) + data.x / W) / m.hitCount;
-            m.avgHitPosY = (m.avgHitPosY * (m.hitCount - 1) + data.y / H) / m.hitCount;
-            if (data.isSpike) m.spikeFrequency = (m.spikeFrequency * 0.9) + 0.1;
-            else m.spikeFrequency *= 0.95;
-            m.preferredSide = m.avgHitPosX < 0.5 ? -1 : 1;
-            break;
-        case 'aiMissed':
-            aiMemory.mistakes.missedBalls++;
-            aiMemory.adaptations.reactionSpeed = Math.min(1.5, aiMemory.adaptations.reactionSpeed + 0.05);
-            break;
-        case 'aiScored':
-            aiMemory.successfulMoves[data.type]++;
-            aiMemory.adaptations.aggressiveness = Math.min(0.8, aiMemory.adaptations.aggressiveness + 0.02);
-            break;
-        case 'aiFailed':
-            aiMemory.adaptations.aggressiveness = Math.max(0.2, aiMemory.adaptations.aggressiveness - 0.03);
-            break;
-        case 'positioning':
-            if (data.success) {
-                aiMemory.successfulMoves.saves++;
-            } else {
-                aiMemory.mistakes.badPositioning++;
-                aiMemory.adaptations.positioningBias += data.direction * 0.1;
-            }
-            break;
+    const m = aiMemory;
+    if (event === 'playerHit') {
+        m.playerPatterns.hitCount++;
+        m.playerPatterns.avgHitPosX = (m.playerPatterns.avgHitPosX * (m.playerPatterns.hitCount - 1) + data.x / W) / m.playerPatterns.hitCount;
+        if (data.isSpike) m.playerPatterns.spikeFrequency = m.playerPatterns.spikeFrequency * 0.9 + 0.1;
+        else m.playerPatterns.spikeFrequency *= 0.95;
+    } else if (event === 'aiMissed') {
+        m.adaptations.reactionSpeed = Math.min(1.5, m.adaptations.reactionSpeed + 0.05);
+    } else if (event === 'aiScored') {
+        m.adaptations.aggressiveness = Math.min(0.8, m.adaptations.aggressiveness + 0.02);
     }
 }
 
@@ -598,8 +498,9 @@ function playSound(type) {
         bounce: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(activeMode === 'basketball' ? 150 : 300, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.08); gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); osc.start(now); osc.stop(now + 0.1); },
         net: () => { osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12); osc.start(now); osc.stop(now + 0.12); },
         whistle: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1000, now + 0.1); osc.frequency.setValueAtTime(800, now + 0.2); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35); osc.start(now); osc.stop(now + 0.35); },
-        swish: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.15); gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); osc.start(now); osc.stop(now + 0.2); },
-        shoot: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+        swish: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.2); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25); osc.start(now); osc.stop(now + 0.25); },
+        dunk: () => { osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.setValueAtTime(200, now + 0.05); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2); osc.start(now); osc.stop(now + 0.2); },
+        charge: () => { osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
     };
     if (sounds[type]) sounds[type]();
 }
@@ -714,8 +615,10 @@ function handleNetworkData(data) {
     else if (data.type === 'state' && !isHost) {
         player.x = W - data.opponent.x - player.w; player.y = data.opponent.y;
         player.handAction = data.opponent.handAction || 'idle'; player.handTimer = data.opponent.handTimer || 0;
+        player.shootPower = data.opponent.shootPower || 0; player.isCharging = data.opponent.isCharging || false;
         opponent.x = W - data.player.x - opponent.w; opponent.y = data.player.y;
         opponent.handAction = data.player.handAction || 'idle'; opponent.handTimer = data.player.handTimer || 0;
+        opponent.shootPower = data.player.shootPower || 0; opponent.isCharging = data.player.isCharging || false;
         ball.x = W - data.ball.x; ball.y = data.ball.y; ball.vx = -data.ball.vx; ball.vy = data.ball.vy;
         playerScore = data.opponentScore; opponentScore = data.playerScore;
         playerTouches = data.opponentTouches; opponentTouches = data.playerTouches;
@@ -731,8 +634,8 @@ function sendState() {
     if (conn && conn.open && isHost) {
         conn.send({
             type: 'state',
-            player: { x: player.x, y: player.y, handAction: player.handAction, handTimer: player.handTimer },
-            opponent: { x: opponent.x, y: opponent.y, handAction: opponent.handAction, handTimer: opponent.handTimer },
+            player: { x: player.x, y: player.y, handAction: player.handAction, handTimer: player.handTimer, shootPower: player.shootPower, isCharging: player.isCharging },
+            opponent: { x: opponent.x, y: opponent.y, handAction: opponent.handAction, handTimer: opponent.handTimer, shootPower: opponent.shootPower, isCharging: opponent.isCharging },
             ball: { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy },
             playerScore, opponentScore, playerTouches, opponentTouches, gameState
         });
@@ -741,7 +644,7 @@ function sendState() {
 
 function sendInput() {
     if (conn && conn.open && !isHost) {
-        conn.send({ type: 'input', input: { left: keys['a'], right: keys['d'], jump: keys['w'] || keys[' '], set: setPressed, click: clickedThisFrame, rightClick: rightClickedThisFrame } });
+        conn.send({ type: 'input', input: { left: keys['a'], right: keys['d'], jump: keys['w'] || keys[' '], set: setPressed, click: clickedThisFrame, rightClickDown, rightClickReleased } });
     }
 }
 
@@ -767,11 +670,10 @@ function beginGame() {
         volleyball: 'A/D = move | W/SPACE = jump | Q = set | CLICK = bump | JUMP+CLICK = spike',
         tennis: 'A/D = move | W/SPACE = jump | CLICK = hit | JUMP+CLICK = smash',
         badminton: 'A/D = move | W/SPACE = jump | CLICK = hit | JUMP+CLICK = smash',
-        basketball: 'A/D = move | W/SPACE = jump | CLICK = dribble/steal | RIGHT CLICK = shoot'
+        basketball: 'A/D = move | W/SPACE = jump | CLICK = dribble | HOLD RIGHT CLICK = shoot | JUMP near hoop = DUNK'
     };
     document.getElementById('info').textContent = controls[activeMode];
     
-    // Reset AI learning for new game but keep some memory
     aiMemory.adaptations.reactionSpeed = Math.max(1, aiMemory.adaptations.reactionSpeed * 0.8);
     
     initAudio();
@@ -803,7 +705,14 @@ document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 canvas.addEventListener('mousedown', e => {
     initAudio();
     if (e.button === 0) clickedThisFrame = true;
-    else if (e.button === 2) rightClickedThisFrame = true;
+    else if (e.button === 2) rightClickDown = true;
+});
+
+canvas.addEventListener('mouseup', e => {
+    if (e.button === 2) {
+        rightClickDown = false;
+        rightClickReleased = true;
+    }
 });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -829,20 +738,23 @@ document.getElementById('lobbyInput').addEventListener('keypress', e => { if (e.
 // ==================== ENTITIES ====================
 const player = {
     x: 150, y: GROUND_Y - 55, w: 55, h: 55,
-    vx: 0, vy: 0, speed: 4.5, jumpPower: -10,
+    vx: 0, vy: 0, speed: 4.5, jumpPower: -11,
     onGround: true, facingRight: true,
     handAction: 'idle', handTimer: 0,
-    hasBall: false, shootPower: 0, isShooting: false
+    hasBall: false,
+    shootPower: 0, isCharging: false, shootDirection: 1,
+    lastChargeSound: 0
 };
 
 const opponent = {
     x: W - 220, y: GROUND_Y - 55, w: 55, h: 55,
-    vx: 0, vy: 0, speed: 4, jumpPower: -10,
+    vx: 0, vy: 0, speed: 4, jumpPower: -11,
     onGround: true,
     actionCooldown: 0, hitCount: 0, targetX: W * 0.75,
     lastDecision: 0,
     handAction: 'idle', handTimer: 0,
-    hasBall: false, shootPower: 0, isShooting: false
+    hasBall: false,
+    shootPower: 0, isCharging: false, shootDirection: 1
 };
 
 const ball = {
@@ -854,8 +766,8 @@ const ball = {
 
 // Basketball hoops
 const hoops = {
-    left: { x: 60, y: GROUND_Y - 140, width: 45, rimY: GROUND_Y - 120 },
-    right: { x: W - 105, y: GROUND_Y - 140, width: 45, rimY: GROUND_Y - 120 }
+    left: { x: 50, y: GROUND_Y - 160, width: 50, rimY: GROUND_Y - 130 },
+    right: { x: W - 100, y: GROUND_Y - 160, width: 50, rimY: GROUND_Y - 130 }
 };
 
 // ==================== HAND ANIMATION ====================
@@ -889,7 +801,7 @@ function getHandPositions(entity, facingLeft) {
         const swing = Math.sin((18 - t) / 18 * Math.PI);
         leftHand = { x: cx - 20 * dir + 15 * dir * swing, y: cy - 5, angle: swing * 0.5 * dir };
         rightHand = { x: cx + 20 * dir * swing, y: cy - 8 + swing * 12, angle: swing * 1.2 * dir };
-    } else if (action === 'smash') {
+    } else if (action === 'smash' || action === 'dunk') {
         const phase = (18 - t) / 18;
         if (phase < 0.25) {
             const lift = phase / 0.25;
@@ -902,8 +814,11 @@ function getHandPositions(entity, facingLeft) {
         }
     } else if (action === 'shoot') {
         const phase = (18 - t) / 18;
-        rightHand = { x: cx + 15 * dir, y: entity.y - 10 - phase * 30, angle: -0.5 * dir + phase * 1.5 * dir };
-        leftHand = { x: cx - 5 * dir, y: entity.y + 5 - phase * 10, angle: 0 };
+        rightHand = { x: cx + 10 * dir, y: entity.y - 15 - phase * 25, angle: -0.3 * dir + phase * 1.2 * dir };
+        leftHand = { x: cx - 8 * dir, y: entity.y + 5 - phase * 8, angle: 0 };
+    } else if (action === 'charge') {
+        rightHand = { x: cx + 5 * dir, y: entity.y - 20, angle: -0.5 * dir };
+        leftHand = { x: cx - 10 * dir, y: entity.y + 5, angle: 0.2 * dir };
     } else if (action === 'dribble') {
         const bounce = Math.sin((18 - t) / 18 * Math.PI * 3);
         rightHand = { x: cx + 20 * dir, y: cy + 15 + bounce * 8, angle: 0.3 * dir };
@@ -918,7 +833,7 @@ function updateScoreDisplay() {
     const mode = getModeSettings();
     let touchText = '';
     if (activeMode === 'volleyball') touchText = `Touches: You ${playerTouches}/${mode.maxTouches} | Opp ${opponentTouches}/${mode.maxTouches}`;
-    else if (activeMode === 'basketball') touchText = `${playerScore >= 21 || opponentScore >= 21 ? 'GAME!' : 'First to 21'}`;
+    else if (activeMode === 'basketball') touchText = `First to 21`;
     else if (mode.allowBounce) touchText = `Bounces: ${ball.bounceCount}/1`;
     document.getElementById('touchIndicator').textContent = touchText;
 }
@@ -928,13 +843,14 @@ function resetRound() {
     
     player.x = activeMode === 'basketball' ? 150 : 180;
     player.y = GROUND_Y - player.h; player.vx = 0; player.vy = 0; player.onGround = true;
-    player.handAction = 'idle'; player.handTimer = 0; player.hasBall = false; player.isShooting = false;
+    player.handAction = 'idle'; player.handTimer = 0; player.hasBall = false;
+    player.shootPower = 0; player.isCharging = false; player.shootDirection = 1;
     
     opponent.x = activeMode === 'basketball' ? W - 205 : W - 240;
     opponent.y = GROUND_Y - opponent.h; opponent.vx = 0; opponent.vy = 0; opponent.onGround = true;
-    opponent.actionCooldown = 0; opponent.hitCount = 0;
-    opponent.lastDecision = 0;
-    opponent.handAction = 'idle'; opponent.handTimer = 0; opponent.hasBall = false; opponent.isShooting = false;
+    opponent.actionCooldown = 0; opponent.hitCount = 0; opponent.lastDecision = 0;
+    opponent.handAction = 'idle'; opponent.handTimer = 0; opponent.hasBall = false;
+    opponent.shootPower = 0; opponent.isCharging = false; opponent.shootDirection = 1;
 
     ball.vy = 0; ball.vx = 0;
     ball.lastHitBy = null; ball.bounceCount = 0; ball.holder = null;
@@ -1032,7 +948,7 @@ function doHit(rect, direction) {
 
 function doSmash(rect, direction) {
     if (gameState !== 'playing' || pointScored) return false;
-    if (activeMode === 'basketball') return doShoot(rect, direction);
+    if (activeMode === 'basketball') return false;
     if (ballCenter(rect) > HIT_RANGE) return false;
     
     const isPlayer = rect === player;
@@ -1063,15 +979,16 @@ function doSmash(rect, direction) {
 // Basketball functions
 function doDribble(rect) {
     if (ball.holder === rect) return true;
-    if (ballCenter(rect) > HIT_RANGE + 20) return false;
+    if (ballCenter(rect) > HIT_RANGE + 30) return false;
     
     const isPlayer = rect === player;
     const otherHolder = isPlayer ? opponent : player;
     
-    // Steal attempt
     if (ball.holder === otherHolder) {
-        if (Math.random() > 0.6) { // 40% steal chance
+        if (Math.random() > 0.5) {
             otherHolder.hasBall = false;
+            otherHolder.isCharging = false;
+            otherHolder.shootPower = 0;
             ball.holder = rect;
             rect.hasBall = true;
             triggerHandAction(rect, 'dribble');
@@ -1090,46 +1007,148 @@ function doDribble(rect) {
     return true;
 }
 
-function doShoot(rect, direction) {
-    if (!rect.hasBall || ball.holder !== rect) return false;
+function canDunk(entity) {
+    if (!entity.hasBall || ball.holder !== entity) return false;
+    if (entity.onGround) return false;
     
-    triggerHandAction(rect, 'shoot');
-    rect.hasBall = false;
+    const isPlayer = entity === player;
+    const targetHoop = isPlayer ? hoops.right : hoops.left;
+    
+    const distToHoop = Math.abs((entity.x + entity.w / 2) - (targetHoop.x + targetHoop.width / 2));
+    const heightCheck = entity.y < targetHoop.rimY + 30;
+    
+    return distToHoop < 70 && heightCheck;
+}
+
+function doDunk(entity) {
+    if (!canDunk(entity)) return false;
+    
+    const isPlayer = entity === player;
+    const targetHoop = isPlayer ? hoops.right : hoops.left;
+    
+    triggerHandAction(entity, 'dunk');
+    entity.hasBall = false;
     ball.holder = null;
     
-    const isPlayer = rect === player;
+    ball.x = targetHoop.x + targetHoop.width / 2;
+    ball.y = targetHoop.rimY + 5;
+    ball.vx = 0;
+    ball.vy = 8;
+    
+    // Score immediately
+    const points = 2;
+    if (isPlayer) playerScore += points;
+    else opponentScore += points;
+    
+    playSound('dunk');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'dunk' });
+    updateScoreDisplay();
+    
+    if (playerScore >= 21 || opponentScore >= 21) {
+        setTimeout(() => scorePoint(playerScore >= 21), 500);
+    } else {
+        setTimeout(() => {
+            if (gameState === 'playing') {
+                ball.x = W / 2; ball.y = 100;
+                ball.vx = 0; ball.vy = 0;
+                ball.holder = null;
+                player.hasBall = false;
+                opponent.hasBall = false;
+            }
+        }, 1000);
+    }
+    
+    return true;
+}
+
+function updateShootCharge(entity, isCharging) {
+    if (!entity.hasBall || activeMode !== 'basketball') {
+        entity.isCharging = false;
+        entity.shootPower = 0;
+        return;
+    }
+    
+    if (isCharging) {
+        if (!entity.isCharging) {
+            entity.isCharging = true;
+            entity.shootPower = 0;
+            entity.shootDirection = 1;
+            entity.handAction = 'charge';
+        }
+        
+        // Oscillate power
+        entity.shootPower += 0.025 * entity.shootDirection;
+        
+        if (entity.shootPower >= 1) {
+            entity.shootPower = 1;
+            entity.shootDirection = -1;
+        } else if (entity.shootPower <= 0) {
+            entity.shootPower = 0;
+            entity.shootDirection = 1;
+        }
+        
+        // Sound feedback at intervals
+        if (Math.floor(entity.shootPower * 20) !== entity.lastChargeSound) {
+            entity.lastChargeSound = Math.floor(entity.shootPower * 20);
+            if (entity.shootPower > 0.9) playSound('charge');
+        }
+    }
+}
+
+function doShoot(entity) {
+    if (!entity.hasBall || ball.holder !== entity || !entity.isCharging) return false;
+    
+    const power = entity.shootPower;
+    entity.isCharging = false;
+    entity.shootPower = 0;
+    
+    triggerHandAction(entity, 'shoot');
+    entity.hasBall = false;
+    ball.holder = null;
+    
+    const isPlayer = entity === player;
     const targetHoop = isPlayer ? hoops.right : hoops.left;
-    const dx = targetHoop.x + targetHoop.width/2 - ball.x;
+    const dx = targetHoop.x + targetHoop.width / 2 - ball.x;
     const dy = targetHoop.rimY - ball.y;
     
-    // NBA 2K style arc shot
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const arcHeight = Math.max(80, dist * 0.4);
-    const time = dist / 8;
+    // Calculate accuracy based on power (1.0 = perfect, lower = worse)
+    let accuracy;
+    if (power >= 0.95) accuracy = 1.0;
+    else if (power >= 0.8) accuracy = 0.85 + (power - 0.8) * 0.5;
+    else if (power >= 0.5) accuracy = 0.6 + (power - 0.5) * 0.83;
+    else accuracy = 0.3 + power * 0.6;
     
-    ball.vx = dx / time * 0.85;
-    ball.vy = -arcHeight / time * 1.8;
+    // Add randomness based on accuracy
+    const errorX = (1 - accuracy) * (Math.random() - 0.5) * 150;
+    const errorY = (1 - accuracy) * (Math.random() - 0.5) * 50;
     
-    playSound('shoot');
-    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'shoot' });
+    const targetX = targetHoop.x + targetHoop.width / 2 + errorX;
+    const targetY = targetHoop.rimY + errorY;
+    
+    const distToTarget = Math.sqrt((targetX - ball.x)**2 + (targetY - ball.y)**2);
+    const arcHeight = Math.max(100, distToTarget * 0.5);
+    const time = distToTarget / 9;
+    
+    ball.vx = (targetX - ball.x) / time;
+    ball.vy = -arcHeight / time * 1.5;
+    ball.lastHitBy = isPlayer ? 'player' : 'opponent';
+    
+    playSound('hit');
+    if (conn && conn.open && isHost) conn.send({ type: 'sound', sound: 'hit' });
     return true;
 }
 
 function checkBasketScore() {
-    const playerHoop = hoops.left;
-    const opponentHoop = hoops.right;
-    
-    // Check if ball goes through hoop
-    [{ hoop: playerHoop, scorer: 'opponent' }, { hoop: opponentHoop, scorer: 'player' }].forEach(({ hoop, scorer }) => {
-        if (ball.x > hoop.x && ball.x < hoop.x + hoop.width &&
-            ball.y > hoop.rimY - 10 && ball.y < hoop.rimY + 15 &&
-            ball.vy > 0) {
+    [{ hoop: hoops.left, scorer: 'opponent' }, { hoop: hoops.right, scorer: 'player' }].forEach(({ hoop, scorer }) => {
+        if (ball.x > hoop.x + 5 && ball.x < hoop.x + hoop.width - 5 &&
+            ball.y > hoop.rimY - 5 && ball.y < hoop.rimY + 20 &&
+            ball.vy > 0 && !pointScored) {
             
-            const distFromHoop = Math.abs(ball.x - (hoop.x + hoop.width/2));
-            if (distFromHoop < hoop.width * 0.4) {
-                const points = ball.lastHitBy ? (dist(ball.x, ball.y, 
-                    scorer === 'player' ? player.x : opponent.x,
-                    scorer === 'player' ? player.y : opponent.y) > 250 ? 3 : 2) : 2;
+            const distFromCenter = Math.abs(ball.x - (hoop.x + hoop.width / 2));
+            if (distFromCenter < hoop.width * 0.35) {
+                const shooterX = scorer === 'player' ? player.x : opponent.x;
+                const distance = Math.abs(ball.x - shooterX);
+                const points = distance > 280 ? 3 : 2;
                 
                 if (scorer === 'player') playerScore += points;
                 else opponentScore += points;
@@ -1138,21 +1157,22 @@ function checkBasketScore() {
                 updateScoreDisplay();
                 
                 ball.vy *= 0.3;
-                ball.vx *= 0.5;
+                ball.vx *= 0.3;
                 
                 if (playerScore >= 21 || opponentScore >= 21) {
-                    scorePoint(playerScore >= 21);
+                    setTimeout(() => scorePoint(playerScore >= 21), 500);
                 } else {
-                    // Reset for next play
                     setTimeout(() => {
-                        if (gameState === 'playing') {
+                        if (gameState === 'playing' && !pointScored) {
                             ball.x = W / 2; ball.y = 100;
                             ball.vx = 0; ball.vy = 0;
                             ball.holder = null;
                             player.hasBall = false;
                             opponent.hasBall = false;
+                            player.isCharging = false;
+                            opponent.isCharging = false;
                         }
-                    }, 1000);
+                    }, 1200);
                 }
             }
         }
@@ -1186,23 +1206,39 @@ function updatePlayer() {
         player.onGround = false;
     }
 
-    if (setPressed && activeMode === 'volleyball' && gameState === 'playing') {
-        setPressed = false;
-        doSet(player, 1);
-    }
-
-    if (clickedThisFrame && gameState === 'playing') {
-        if (activeMode === 'basketball') {
-            doDribble(player);
-        } else if (!player.onGround && ball.y < player.y + 20) {
-            doSmash(player, 1);
-        } else {
-            doHit(player, 1);
+    if (activeMode === 'basketball') {
+        // Check for dunk opportunity
+        if (!player.onGround && player.hasBall && canDunk(player)) {
+            if (clickedThisFrame || (keys['w'] || keys[' '])) {
+                doDunk(player);
+            }
         }
-    }
-    
-    if (rightClickedThisFrame && gameState === 'playing' && activeMode === 'basketball') {
-        doShoot(player, 1);
+        
+        // Shooting charge
+        updateShootCharge(player, rightClickDown);
+        
+        // Release shot
+        if (rightClickReleased && player.isCharging) {
+            doShoot(player);
+        }
+        
+        // Dribble/steal
+        if (clickedThisFrame && !canDunk(player)) {
+            doDribble(player);
+        }
+    } else {
+        if (setPressed && activeMode === 'volleyball' && gameState === 'playing') {
+            setPressed = false;
+            doSet(player, 1);
+        }
+
+        if (clickedThisFrame && gameState === 'playing') {
+            if (!player.onGround && ball.y < player.y + 20) {
+                doSmash(player, 1);
+            } else {
+                doHit(player, 1);
+            }
+        }
     }
 
     player.vy += GRAVITY;
@@ -1221,10 +1257,13 @@ function updatePlayer() {
         player.x = clamp(player.x, 0, NET_X - player.w - 8);
     }
     
-    // Basketball ball following
-    if (player.hasBall && ball.holder === player) {
+    if (player.hasBall && ball.holder === player && !player.isCharging) {
         ball.x = player.x + player.w / 2 + (player.facingRight ? 20 : -20);
         ball.y = player.y + player.h - 10 + Math.sin(Date.now() / 80) * 8;
+        ball.vx = 0; ball.vy = 0;
+    } else if (player.hasBall && ball.holder === player && player.isCharging) {
+        ball.x = player.x + player.w / 2 + (player.facingRight ? 8 : -8);
+        ball.y = player.y - 15;
         ball.vx = 0; ball.vy = 0;
     }
 }
@@ -1238,16 +1277,24 @@ function updateOpponent() {
         if (remoteInput.left) opponent.vx = opponent.speed;
         if (remoteInput.right) opponent.vx = -opponent.speed;
         if (remoteInput.jump && opponent.onGround) { opponent.vy = opponent.jumpPower; opponent.onGround = false; }
-        if (remoteInput.set && activeMode === 'volleyball' && gameState === 'playing') { remoteInput.set = false; doSet(opponent, -1); }
-        if (remoteInput.click && gameState === 'playing') {
-            remoteInput.click = false;
-            if (activeMode === 'basketball') doDribble(opponent);
-            else if (!opponent.onGround && ball.y < opponent.y + 20) doSmash(opponent, -1);
-            else doHit(opponent, -1);
-        }
-        if (remoteInput.rightClick && gameState === 'playing' && activeMode === 'basketball') {
-            remoteInput.rightClick = false;
-            doShoot(opponent, -1);
+        
+        if (activeMode === 'basketball') {
+            if (!opponent.onGround && opponent.hasBall && canDunk(opponent)) {
+                if (remoteInput.click) doDunk(opponent);
+            }
+            updateShootCharge(opponent, remoteInput.rightClickDown);
+            if (remoteInput.rightClickReleased && opponent.isCharging) {
+                doShoot(opponent);
+                remoteInput.rightClickReleased = false;
+            }
+            if (remoteInput.click && !canDunk(opponent)) doDribble(opponent);
+        } else {
+            if (remoteInput.set && activeMode === 'volleyball' && gameState === 'playing') { remoteInput.set = false; doSet(opponent, -1); }
+            if (remoteInput.click && gameState === 'playing') {
+                remoteInput.click = false;
+                if (!opponent.onGround && ball.y < opponent.y + 20) doSmash(opponent, -1);
+                else doHit(opponent, -1);
+            }
         }
     } else if (gameMode === 'solo') {
         updateAI();
@@ -1271,9 +1318,13 @@ function updateOpponent() {
         }
     }
     
-    if (opponent.hasBall && ball.holder === opponent) {
+    if (opponent.hasBall && ball.holder === opponent && !opponent.isCharging) {
         ball.x = opponent.x + opponent.w / 2 - 20;
         ball.y = opponent.y + opponent.h - 10 + Math.sin(Date.now() / 80) * 8;
+        ball.vx = 0; ball.vy = 0;
+    } else if (opponent.hasBall && ball.holder === opponent && opponent.isCharging) {
+        ball.x = opponent.x + opponent.w / 2 - 8;
+        ball.y = opponent.y - 15;
         ball.vx = 0; ball.vy = 0;
     }
 }
@@ -1282,7 +1333,6 @@ function updateAI() {
     if (gameState !== 'playing' || pointScored) { opponent.vx = 0; return; }
     
     const mode = getModeSettings();
-    const netTop = GROUND_Y - (mode.netHeight || 0);
     const adapt = aiMemory.adaptations;
     
     opponent.actionCooldown = Math.max(0, opponent.actionCooldown - 1);
@@ -1293,10 +1343,10 @@ function updateAI() {
         return;
     }
 
+    const netTop = GROUND_Y - (mode.netHeight || 0);
     const ballOnMySide = ball.x > NET_X;
     const distToB = ballCenter(opponent);
 
-    // Predict landing with learning adjustment
     let predictX = ball.x, predictY = ball.y;
     let pvx = ball.vx, pvy = ball.vy;
     for (let i = 0; i < 70; i++) {
@@ -1306,26 +1356,16 @@ function updateAI() {
         if (predictY >= GROUND_Y - 20) break;
     }
     
-    // Apply learned positioning bias
     predictX += adapt.positioningBias * 30;
 
-    // Decision making with learning
     const reactionDelay = Math.max(15, 30 - adapt.reactionSpeed * 10);
     if (opponent.lastDecision > reactionDelay) {
         opponent.lastDecision = 0;
         
-        // Predict based on player patterns
-        const expectedPlayerShot = aiMemory.playerPatterns.avgHitPosX * W;
-        
         if (ballOnMySide) {
-            // More aggressive positioning based on learning
-            if (adapt.aggressiveness > 0.5) {
-                opponent.targetX = ball.x - opponent.w / 2;
-            } else {
-                opponent.targetX = predictX - opponent.w / 2;
-            }
+            if (adapt.aggressiveness > 0.5) opponent.targetX = ball.x - opponent.w / 2;
+            else opponent.targetX = predictX - opponent.w / 2;
         } else {
-            // Position based on expected player behavior
             opponent.targetX = W * 0.72 + adapt.positioningBias * 20;
         }
     }
@@ -1339,14 +1379,12 @@ function updateAI() {
         opponent.vx = 0;
     }
 
-    // Action logic with learning
     if (ballOnMySide && opponent.actionCooldown <= 0) {
         const ballComingDown = ball.vy > 0;
         const ballNear = distToB < HIT_RANGE + 25;
         const ballAbove = ball.y < opponent.y;
         const ballHigh = ball.y < netTop - 20;
 
-        // Jump decision
         if (ballAbove && ballComingDown && distToB < 160 && opponent.onGround) {
             if (ball.y < netTop + 80) {
                 opponent.vy = opponent.jumpPower * (0.95 + adapt.aggressiveness * 0.1);
@@ -1354,7 +1392,6 @@ function updateAI() {
             }
         }
 
-        // Hit decisions with learning
         if (ballNear && (ballAbove || ball.y < opponent.y + 30)) {
             if (!opponent.onGround && ballHigh && ball.y < opponent.y + 40 && adapt.aggressiveness > 0.4) {
                 if (doSmash(opponent, -1)) {
@@ -1366,22 +1403,17 @@ function updateAI() {
                 if (doSet(opponent, -1)) {
                     opponent.actionCooldown = 8;
                     opponent.hitCount = 1;
-                    updateAILearning('aiScored', { type: 'sets' });
                 }
             } else if (ballComingDown) {
                 if (doHit(opponent, -1)) {
                     opponent.actionCooldown = 12;
                     opponent.hitCount = 0;
-                    updateAILearning('aiScored', { type: 'saves' });
                 }
             }
         }
 
-        // Emergency save
         if (ballNear && ball.y > netTop + 50 && ballComingDown) {
-            if (doHit(opponent, -1)) {
-                opponent.actionCooldown = 15;
-            }
+            if (doHit(opponent, -1)) opponent.actionCooldown = 15;
         }
     }
 
@@ -1391,50 +1423,84 @@ function updateAI() {
 function updateAIBasketball() {
     const distToB = ballCenter(opponent);
     
-    // If has ball, try to score
+    // Check for dunk opportunity
+    if (opponent.hasBall && !opponent.onGround && canDunk(opponent)) {
+        doDunk(opponent);
+        return;
+    }
+    
     if (opponent.hasBall && ball.holder === opponent) {
         const targetHoop = hoops.left;
-        const distToHoop = dist(opponent.x, opponent.y, targetHoop.x, targetHoop.rimY);
+        const distToHoop = dist(opponent.x + opponent.w/2, opponent.y, targetHoop.x + targetHoop.width/2, targetHoop.rimY);
         
-        // Move towards good shooting position
-        const idealX = targetHoop.x + 180;
-        const diff = idealX - opponent.x;
+        // Try to get closer for dunk
+        const dunkZone = targetHoop.x + targetHoop.width + 60;
+        const idealShootX = targetHoop.x + 200;
         
-        if (Math.abs(diff) > 20) {
-            opponent.vx = (diff > 0 ? opponent.speed : -opponent.speed) * 0.8;
+        if (opponent.x > dunkZone && distToHoop < 200) {
+            // Move towards dunk zone
+            const diff = dunkZone - 10 - opponent.x;
+            opponent.vx = clamp(diff * 0.15, -opponent.speed, opponent.speed);
+            
+            // Jump for dunk when close
+            if (Math.abs(diff) < 40 && opponent.onGround && opponent.actionCooldown <= 0) {
+                opponent.vy = opponent.jumpPower;
+                opponent.onGround = false;
+                opponent.actionCooldown = 20;
+            }
         } else {
-            opponent.vx = 0;
-            // Shoot when in position
-            if (opponent.actionCooldown <= 0 && distToHoop < 350) {
-                if (opponent.onGround && Math.random() > 0.3) {
-                    opponent.vy = opponent.jumpPower * 0.7;
-                    opponent.onGround = false;
-                }
-                if (!opponent.onGround || Math.random() > 0.5) {
-                    doShoot(opponent, -1);
-                    opponent.actionCooldown = 30;
+            // Move to shooting position
+            const diff = idealShootX - opponent.x;
+            
+            if (Math.abs(diff) > 30) {
+                opponent.vx = clamp(diff * 0.1, -opponent.speed * 0.8, opponent.speed * 0.8);
+            } else {
+                opponent.vx = 0;
+                
+                // Shoot with charge
+                if (opponent.actionCooldown <= 0 && distToHoop < 400) {
+                    if (!opponent.isCharging) {
+                        opponent.isCharging = true;
+                        opponent.shootPower = 0;
+                        opponent.shootDirection = 1;
+                        opponent.handAction = 'charge';
+                    } else {
+                        // AI timing - try to release near perfect
+                        opponent.shootPower += 0.03 * opponent.shootDirection;
+                        if (opponent.shootPower >= 1) opponent.shootDirection = -1;
+                        else if (opponent.shootPower <= 0) opponent.shootDirection = 1;
+                        
+                        // Release at good power
+                        if (opponent.shootPower > 0.9 && opponent.shootDirection === -1) {
+                            doShoot(opponent);
+                            opponent.actionCooldown = 40;
+                        }
+                    }
                 }
             }
         }
     } else {
-        // Chase the ball
+        opponent.isCharging = false;
+        opponent.shootPower = 0;
+        
+        // Chase ball
         const targetX = ball.x - opponent.w / 2;
         const diff = targetX - opponent.x;
         
-        if (Math.abs(diff) > 10) {
-            opponent.vx = clamp(diff * 0.1, -opponent.speed, opponent.speed);
+        if (Math.abs(diff) > 15) {
+            opponent.vx = clamp(diff * 0.12, -opponent.speed, opponent.speed);
         } else {
             opponent.vx = 0;
         }
         
-        // Try to get the ball
-        if (distToB < HIT_RANGE + 20 && opponent.actionCooldown <= 0) {
+        // Get ball
+        if (distToB < HIT_RANGE + 30 && opponent.actionCooldown <= 0) {
             doDribble(opponent);
-            opponent.actionCooldown = 15;
+            opponent.actionCooldown = 10;
         }
         
         // Jump for high balls
-        if (ball.y < opponent.y - 30 && distToB < 100 && opponent.onGround) {
+        if (ball.y < opponent.y - 50 && distToB < 120 && opponent.onGround) {
             opponent.vy = opponent.jumpPower;
             opponent.onGround = false;
         }
@@ -1444,7 +1510,7 @@ function updateAIBasketball() {
 // ==================== BALL ====================
 function updateBall() {
     if (gameMode === 'client' || gameState !== 'playing' || pointScored) return;
-    if (ball.holder) return; // Ball is held
+    if (ball.holder) return;
 
     const mode = getModeSettings();
     const netTop = GROUND_Y - (mode.netHeight || 0);
@@ -1481,20 +1547,33 @@ function updateBall() {
     if (activeMode === 'basketball') {
         checkBasketScore();
         
-        // Backboard collision
         [hoops.left, hoops.right].forEach(hoop => {
-            if (ball.x > hoop.x - 5 && ball.x < hoop.x + hoop.width + 5 &&
-                ball.y > hoop.y - 40 && ball.y < hoop.rimY) {
-                if (ball.x < hoop.x + hoop.width / 2) ball.vx = -Math.abs(ball.vx) * 0.6;
-                else ball.vx = Math.abs(ball.vx) * 0.6;
+            // Backboard
+            const backboardX = hoop === hoops.left ? hoop.x - 8 : hoop.x + hoop.width;
+            if (ball.x + ball.r > backboardX - 5 && ball.x - ball.r < backboardX + 12 &&
+                ball.y > hoop.y - 50 && ball.y < hoop.rimY + 10) {
+                if (hoop === hoops.left) {
+                    ball.x = backboardX - 5 - ball.r;
+                    ball.vx = Math.abs(ball.vx) * 0.6;
+                } else {
+                    ball.x = backboardX + 12 + ball.r;
+                    ball.vx = -Math.abs(ball.vx) * 0.6;
+                }
                 playSound('bounce');
             }
+            
             // Rim
-            if (ball.y > hoop.rimY - 5 && ball.y < hoop.rimY + 10) {
-                if ((ball.x > hoop.x - 8 && ball.x < hoop.x + 8) || 
-                    (ball.x > hoop.x + hoop.width - 8 && ball.x < hoop.x + hoop.width + 8)) {
-                    ball.vy = -Math.abs(ball.vy) * 0.5;
-                    ball.vx *= 0.8;
+            const rimLeft = hoop.x;
+            const rimRight = hoop.x + hoop.width;
+            if (ball.y > hoop.rimY - 8 && ball.y < hoop.rimY + 12) {
+                if (Math.abs(ball.x - rimLeft) < ball.r + 4) {
+                    ball.vx = -Math.abs(ball.vx) * 0.5 - 1;
+                    ball.vy = -Math.abs(ball.vy) * 0.4;
+                    playSound('bounce');
+                }
+                if (Math.abs(ball.x - rimRight) < ball.r + 4) {
+                    ball.vx = Math.abs(ball.vx) * 0.5 + 1;
+                    ball.vy = -Math.abs(ball.vy) * 0.4;
                     playSound('bounce');
                 }
             }
@@ -1512,17 +1591,19 @@ function updateBall() {
     }
 
     // Player collisions
-    if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
-        pushBallOutOfRect(player);
-        if (activeMode === 'basketball') ball.vy *= 0.5;
-        else ball.vy = Math.min(ball.vy, -2);
-        playSound('bounce');
-    }
-    if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
-        pushBallOutOfRect(opponent);
-        if (activeMode === 'basketball') ball.vy *= 0.5;
-        else ball.vy = Math.min(ball.vy, -2);
-        playSound('bounce');
+    if (!ball.holder) {
+        if (rectCircleCollision(player.x, player.y, player.w, player.h, ball.x, ball.y, ball.r)) {
+            pushBallOutOfRect(player);
+            if (activeMode === 'basketball') ball.vy *= 0.5;
+            else ball.vy = Math.min(ball.vy, -2);
+            playSound('bounce');
+        }
+        if (rectCircleCollision(opponent.x, opponent.y, opponent.w, opponent.h, ball.x, ball.y, ball.r)) {
+            pushBallOutOfRect(opponent);
+            if (activeMode === 'basketball') ball.vy *= 0.5;
+            else ball.vy = Math.min(ball.vy, -2);
+            playSound('bounce');
+        }
     }
 
     // Ground
@@ -1531,7 +1612,7 @@ function updateBall() {
             if (activeMode === 'basketball') {
                 ball.y = GROUND_Y - ball.r;
                 ball.vy = -ball.vy * 0.7;
-                ball.vx *= 0.85;
+                ball.vx *= 0.9;
                 playSound('bounce');
             } else if (ball.bounceCount < 1) {
                 ball.bounceCount++;
@@ -1541,15 +1622,15 @@ function updateBall() {
                 playSound('bounce');
                 updateScoreDisplay();
             } else {
+                const isPlayerSide = ball.x < NET_X;
+                if (!isPlayerSide) updateAILearning('aiMissed', {});
                 scorePoint(ball.x >= NET_X);
             }
         } else {
-            if (activeMode !== 'basketball') {
-                const isPlayerSide = ball.x < NET_X;
-                if (isPlayerSide) updateAILearning('aiScored', { type: 'spikes' });
-                else updateAILearning('aiMissed', {});
-                scorePoint(ball.x >= NET_X);
-            }
+            const isPlayerSide = ball.x < NET_X;
+            if (isPlayerSide) updateAILearning('aiScored', { type: 'points' });
+            else updateAILearning('aiMissed', {});
+            scorePoint(ball.x >= NET_X);
         }
     }
 }
@@ -1565,44 +1646,81 @@ function scorePoint(playerScored) {
     ball.holder = null;
     player.hasBall = false;
     opponent.hasBall = false;
+    player.isCharging = false;
+    opponent.isCharging = false;
 
     if (activeMode !== 'basketball') {
         if (playerScored) { playerScore++; serveSide = 'opponent'; playSound('score'); }
         else { opponentScore++; serveSide = 'player'; playSound('lose'); }
+    } else {
+        if (playerScored) playSound('score');
+        else playSound('lose');
     }
     updateScoreDisplay();
 }
 
 // ==================== DRAWING ====================
+function drawPowerBar(entity) {
+    if (!entity.isCharging || activeMode !== 'basketball') return;
+    
+    const barWidth = 10;
+    const barHeight = 60;
+    const x = entity.x + entity.w + 8;
+    const y = entity.y + entity.h - barHeight;
+    
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+    
+    // Power level
+    const fillHeight = entity.shootPower * barHeight;
+    
+    // Color based on power
+    let color;
+    if (entity.shootPower >= 0.95) color = '#00ff00';
+    else if (entity.shootPower >= 0.8) color = '#88ff00';
+    else if (entity.shootPower >= 0.5) color = '#ffff00';
+    else color = '#ff6600';
+    
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y + barHeight - fillHeight, barWidth, fillHeight);
+    
+    // Perfect zone indicator
+    ctx.fillStyle = 'rgba(0,255,0,0.3)';
+    ctx.fillRect(x, y, barWidth, barHeight * 0.05);
+    
+    // Border
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, barWidth, barHeight);
+    
+    // "PERFECT" text when in zone
+    if (entity.shootPower >= 0.95) {
+        ctx.fillStyle = '#00ff00';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText('PERFECT!', x - 15, y - 8);
+    }
+}
+
 function drawRacket(x, y, angle, color) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
     
-    // Handle
     ctx.fillStyle = '#8B4513';
     ctx.fillRect(-3, 0, 6, 18);
     
-    // Head
     ctx.fillStyle = color;
     ctx.beginPath();
-    if (activeMode === 'badminton') {
-        ctx.ellipse(0, -12, 10, 14, 0, 0, Math.PI * 2);
-    } else {
-        ctx.ellipse(0, -10, 12, 12, 0, 0, Math.PI * 2);
-    }
+    if (activeMode === 'badminton') ctx.ellipse(0, -12, 10, 14, 0, 0, Math.PI * 2);
+    else ctx.ellipse(0, -10, 12, 12, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Strings
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 0.5;
     for (let i = -8; i <= 8; i += 4) {
-        ctx.beginPath();
-        ctx.moveTo(i, -22); ctx.lineTo(i, -2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-10, -12 + i); ctx.lineTo(10, -12 + i);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(i, -22); ctx.lineTo(i, -2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-10, -12 + i); ctx.lineTo(10, -12 + i); ctx.stroke();
     }
     
     ctx.restore();
@@ -1621,8 +1739,11 @@ function drawPlayer(entity, mode, facingLeft, label) {
     ctx.fill();
     
     // Hands behind for some poses
+    const behindPoses = ['set', 'charge'];
+    const isBehind = behindPoses.includes(entity.handAction) || (entity.handAction === 'smash' && entity.handTimer > 13) || (entity.handAction === 'dunk' && entity.handTimer > 13);
+    
     ctx.fillStyle = handColor;
-    if (entity.handAction === 'set' || (entity.handAction === 'smash' && entity.handTimer > 13)) {
+    if (isBehind) {
         ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
         if (hasRacket) drawRacket(hands.right.x, hands.right.y, hands.right.angle, mode.racketColor);
         else ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
@@ -1646,7 +1767,7 @@ function drawPlayer(entity, mode, facingLeft, label) {
     
     // Hands in front
     ctx.fillStyle = handColor;
-    if (entity.handAction !== 'set' && !(entity.handAction === 'smash' && entity.handTimer > 13)) {
+    if (!isBehind) {
         ctx.fillRect(hands.left.x - HAND_SIZE/2, hands.left.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
         if (hasRacket) drawRacket(hands.right.x, hands.right.y, hands.right.angle, mode.racketColor);
         else ctx.fillRect(hands.right.x - HAND_SIZE/2, hands.right.y - HAND_SIZE/2, HAND_SIZE, HAND_SIZE);
@@ -1656,19 +1777,35 @@ function drawPlayer(entity, mode, facingLeft, label) {
     ctx.font = 'bold 14px monospace';
     ctx.fillStyle = entity === player ? '#fff' : '#fdd';
     ctx.fillText(label, entity.x + (facingLeft ? 16 : 8), entity.y - 10);
+    
+    // Power bar
+    drawPowerBar(entity);
+    
+    // Dunk indicator
+    if (activeMode === 'basketball' && entity.hasBall && canDunk(entity)) {
+        ctx.fillStyle = '#ff0';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText('DUNK!', entity.x + 5, entity.y - 25);
+    }
 }
 
 function drawHoop(hoop, side) {
     // Backboard
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(hoop.x + (side === 'left' ? -10 : hoop.width), hoop.y - 50, 10, 60);
+    const bx = side === 'left' ? hoop.x - 12 : hoop.x + hoop.width;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(bx, hoop.y - 55, 12, 70);
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
-    ctx.strokeRect(hoop.x + (side === 'left' ? -10 : hoop.width), hoop.y - 50, 10, 60);
+    ctx.strokeRect(bx, hoop.y - 55, 12, 70);
+    
+    // Backboard square
+    ctx.strokeStyle = '#ff4500';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx + (side === 'left' ? 2 : -30), hoop.y - 35, 30, 25);
     
     // Rim
     ctx.strokeStyle = '#ff4500';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(hoop.x, hoop.rimY);
     ctx.lineTo(hoop.x + hoop.width, hoop.rimY);
@@ -1677,16 +1814,19 @@ function drawHoop(hoop, side) {
     // Net
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
+    for (let i = 0; i <= 5; i++) {
+        const topX = hoop.x + i * (hoop.width / 5);
+        const bottomX = hoop.x + hoop.width / 2 + (i - 2.5) * 8;
         ctx.beginPath();
-        ctx.moveTo(hoop.x + i * (hoop.width / 4), hoop.rimY);
-        ctx.lineTo(hoop.x + hoop.width / 2 + (i - 2) * 5, hoop.rimY + 25);
+        ctx.moveTo(topX, hoop.rimY);
+        ctx.quadraticCurveTo(topX, hoop.rimY + 15, bottomX, hoop.rimY + 30);
         ctx.stroke();
     }
     
     // Pole
-    ctx.fillStyle = '#666';
-    ctx.fillRect(hoop.x + (side === 'left' ? -15 : hoop.width + 5), hoop.rimY, 10, GROUND_Y - hoop.rimY);
+    ctx.fillStyle = '#555';
+    const poleX = side === 'left' ? hoop.x - 18 : hoop.x + hoop.width + 6;
+    ctx.fillRect(poleX, hoop.rimY - 10, 8, GROUND_Y - hoop.rimY + 10);
 }
 
 function drawGame() {
@@ -1706,25 +1846,20 @@ function drawGame() {
     
     // Court markings
     if (activeMode === 'basketball') {
-        // Basketball court
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
-        // Center circle
         ctx.beginPath();
         ctx.arc(W/2, GROUND_Y, 60, Math.PI, 0);
         ctx.stroke();
-        // Three point lines
         ctx.beginPath();
         ctx.arc(hoops.left.x + hoops.left.width/2, GROUND_Y, 180, Math.PI, 0);
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(hoops.right.x + hoops.right.width/2, GROUND_Y, 180, Math.PI, 0);
         ctx.stroke();
-        // Key areas
-        ctx.strokeRect(20, GROUND_Y - 100, 120, 100);
-        ctx.strokeRect(W - 140, GROUND_Y - 100, 120, 100);
+        ctx.strokeRect(20, GROUND_Y - 90, 100, 90);
+        ctx.strokeRect(W - 120, GROUND_Y - 90, 100, 90);
         
-        // Hoops
         drawHoop(hoops.left, 'left');
         drawHoop(hoops.right, 'right');
     } else if (activeMode === 'tennis') {
@@ -1749,7 +1884,7 @@ function drawGame() {
         ctx.setLineDash([]);
     }
 
-    // Net (not for basketball)
+    // Net
     if (activeMode !== 'basketball' && mode.netHeight > 0) {
         ctx.fillStyle = activeMode === 'badminton' ? '#555' : '#333';
         ctx.fillRect(NET_X - 4, netTop, 8, mode.netHeight);
@@ -1765,7 +1900,7 @@ function drawGame() {
         }
     }
 
-    // Hit range indicator (not for basketball)
+    // Hit range indicator
     if (activeMode !== 'basketball') {
         const pDist = ballCenter(player);
         if (pDist < HIT_RANGE + 30 && gameState === 'playing') {
@@ -1816,16 +1951,16 @@ function drawGame() {
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
         ctx.fillStyle = mode.ballColor;
         ctx.fill();
-        ctx.strokeStyle = '#8B4513';
+        ctx.strokeStyle = '#333';
         ctx.lineWidth = 2;
         ctx.stroke();
-        // Basketball lines
         ctx.beginPath();
         ctx.moveTo(ball.x - ball.r, ball.y);
         ctx.lineTo(ball.x + ball.r, ball.y);
         ctx.moveTo(ball.x, ball.y - ball.r);
         ctx.lineTo(ball.x, ball.y + ball.r);
-        ctx.strokeStyle = '#333';
+        ctx.arc(ball.x, ball.y, ball.r * 0.6, 0, Math.PI * 2);
+        ctx.strokeStyle = '#8B4513';
         ctx.lineWidth = 1.5;
         ctx.stroke();
     } else {
@@ -1859,8 +1994,8 @@ function drawGame() {
     if (gameState === 'roundOver') {
         ctx.textAlign = 'center';
         ctx.font = 'bold 32px monospace';
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(W/2 - 180, H/2 - 80, 360, 75);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(W/2 - 180, H/2 - 80, 360, 80);
 
         if (activeMode === 'basketball') {
             ctx.fillStyle = playerScore >= 21 ? '#77ff77' : '#ff7777';
@@ -1879,26 +2014,27 @@ function drawGame() {
     }
 
     // Action hints
-    if (gameState === 'playing' && activeMode !== 'basketball') {
-        const pDist = ballCenter(player);
-        if (pDist < HIT_RANGE) {
-            ctx.textAlign = 'center';
-            ctx.font = '13px monospace';
-            ctx.fillStyle = 'rgba(255,255,220,0.95)';
-            if (!player.onGround) ctx.fillText('CLICK to SMASH!', W/2, H - 12);
-            else if (activeMode === 'volleyball') ctx.fillText('Q = Set | CLICK = Bump', W/2, H - 12);
-            else ctx.fillText('CLICK = Hit', W/2, H - 12);
-            ctx.textAlign = 'left';
-        }
-    }
-    
-    // Basketball hints
-    if (gameState === 'playing' && activeMode === 'basketball') {
+    if (gameState === 'playing') {
         ctx.textAlign = 'center';
         ctx.font = '13px monospace';
         ctx.fillStyle = 'rgba(255,255,220,0.95)';
-        if (player.hasBall) ctx.fillText('RIGHT CLICK to SHOOT!', W/2, H - 12);
-        else if (ballCenter(player) < HIT_RANGE + 20) ctx.fillText('CLICK to grab ball', W/2, H - 12);
+        
+        if (activeMode === 'basketball') {
+            if (player.hasBall && canDunk(player)) {
+                ctx.fillText('Press JUMP or CLICK to DUNK!', W/2, H - 12);
+            } else if (player.hasBall) {
+                ctx.fillText('HOLD RIGHT CLICK to charge shot - release at GREEN!', W/2, H - 12);
+            } else if (ballCenter(player) < HIT_RANGE + 30) {
+                ctx.fillText('CLICK to grab ball', W/2, H - 12);
+            }
+        } else {
+            const pDist = ballCenter(player);
+            if (pDist < HIT_RANGE) {
+                if (!player.onGround) ctx.fillText('CLICK to SMASH!', W/2, H - 12);
+                else if (activeMode === 'volleyball') ctx.fillText('Q = Set | CLICK = Bump', W/2, H - 12);
+                else ctx.fillText('CLICK = Hit', W/2, H - 12);
+            }
+        }
         ctx.textAlign = 'left';
     }
 }
@@ -1906,7 +2042,6 @@ function drawGame() {
 // ==================== GAME LOOP ====================
 let lastTime = 0;
 const TICK_RATE = 1000 / 60;
-let frameSkip = 0;
 
 function gameLoop(timestamp) {
     const delta = timestamp - lastTime;
@@ -1933,7 +2068,7 @@ function gameLoop(timestamp) {
         }
 
         clickedThisFrame = false;
-        rightClickedThisFrame = false;
+        rightClickReleased = false;
         setPressed = false;
     }
 
