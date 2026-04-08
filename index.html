@@ -4,731 +4,732 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Void Walker</title>
+
+    <!-- ── ALL DEPENDENCIES: Global scripts, no ES modules ── -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
-        }
-    }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/GLTFLoader.js"></script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; touch-action: none; }
+        html, body, #root {
+            width: 100%; height: 100%;
+            overflow: hidden; touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .anim-spin { animation: spin 1s linear infinite; }
+        @keyframes pulse { 0%,100% { opacity:.6 } 50% { opacity:1 } }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+
+        .anim-spin { animation: spin .9s linear infinite; }
         .anim-pulse { animation: pulse 1.5s ease-in-out infinite; }
-        .anim-fadeup { animation: fadeUp 0.5s ease-out forwards; }
+        .anim-fade { animation: fadeIn .5s ease-out forwards; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module" data-presets="typescript,react">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    <script type="text/babel" data-presets="typescript,react">
 
-        const { useState, useEffect, useRef, useCallback } = React;
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  Globals from CDN script tags
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  TYPES
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const {
+        Scene, PerspectiveCamera, WebGLRenderer,
+        Color, FogExp2,
+        AmbientLight, HemisphereLight, DirectionalLight,
+        PlaneGeometry, CircleGeometry, BufferGeometry,
+        MeshStandardMaterial, MeshBasicMaterial, PointsMaterial,
+        Mesh, Points, GridHelper,
+        Vector3, Box3, Float32BufferAttribute,
+        AnimationMixer, LoopRepeat,
+        Clock, MathUtils,
+        PCFSoftShadowMap, ACESFilmicToneMapping,
+    } = THREE;
 
-        interface JoystickData {
-            active: boolean;
-            touchId: number | null;
-            x: number;
-            y: number;
-        }
+    const GLTFLoader = THREE.GLTFLoader;
 
-        interface KeysMap {
-            [code: string]: boolean;
-        }
+    const { useState, useEffect, useRef, useCallback, memo } = React;
 
-        interface GameState {
-            playerPos: THREE.Vector3;
-            playerRotY: number;
-            isMoving: boolean;
-            wasMoving: boolean;
-        }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  TYPES
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        interface AnimationState {
-            mixer: THREE.AnimationMixer | null;
-            idleAction: THREE.AnimationAction | null;
-            walkAction: THREE.AnimationAction | null;
-            activeAction: THREE.AnimationAction | null;
-        }
+    interface JoystickInput {
+        active: boolean;
+        touchId: number | null;
+        x: number;
+        y: number;
+    }
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  CONSTANTS
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    interface GameConfig {
+        moveSpeed: number;
+        rotLerp: number;
+        camSmooth: number;
+        crossfadeDuration: number;
+        deadZone: number;
+        joyRadius: number;
+    }
 
-        const IDLE_URL: string = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@2c2f1bc/Idle.glb';
-        const WALK_URL: string = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@b2efd08/Walking.glb';
-        const MOVE_SPEED: number = 4.5;
-        const ROT_LERP: number = 12;
-        const CAM_SMOOTHING: number = 5;
-        const CROSSFADE_DUR: number = 0.25;
-        const JOY_RADIUS: number = 50;
-        const DEAD_ZONE: number = 0.12;
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  CONFIG
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  LOADING SCREEN COMPONENT
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const CONFIG: GameConfig = {
+        moveSpeed: 4.5,
+        rotLerp: 12,
+        camSmooth: 5,
+        crossfadeDuration: 0.25,
+        deadZone: 0.12,
+        joyRadius: 50,
+    };
 
-        const LoadingScreen: React.FC<{ progress: number; visible: boolean }> = ({ progress, visible }) => {
-            if (!visible) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white transition-opacity duration-700"
-                     style={{ opacity: visible ? 1 : 0 }}>
-                    <div className="relative flex items-center justify-center mb-8">
-                        <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-800 rounded-full anim-spin" />
-                        <div className="absolute text-xs font-bold text-gray-600">
-                            {Math.round(progress)}%
-                        </div>
-                    </div>
-                    <p className="text-gray-500 text-sm tracking-widest uppercase anim-pulse">
-                        Loading Models
-                    </p>
-                    <div className="w-48 h-1.5 bg-gray-200 rounded-full mt-5 overflow-hidden">
-                        <div className="h-full bg-gray-700 rounded-full transition-all duration-300 ease-out"
-                             style={{ width: `${progress}%` }} />
-                    </div>
+    const IDLE_URL: string = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@2c2f1bc/Idle.glb';
+    const WALK_URL: string = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@b2efd08/Walking.glb';
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  LOADING SCREEN
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const LoadingScreen: React.FC<{ progress: number; visible: boolean }> = memo(({ progress, visible }) => {
+        if (!visible) return null;
+
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white"
+                 style={{ transition: 'opacity 0.6s ease', opacity: visible ? 1 : 0 }}>
+                {/* Spinner */}
+                <div className="relative flex items-center justify-center mb-6">
+                    <div className="w-16 h-16 rounded-full border-4 border-gray-200 anim-spin"
+                         style={{ borderTopColor: '#1f2937' }} />
+                    <span className="absolute text-xs font-bold text-gray-600">
+                        {Math.round(progress)}%
+                    </span>
                 </div>
-            );
-        };
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  JOYSTICK COMPONENT
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                {/* Label */}
+                <p className="text-gray-400 text-sm tracking-widest uppercase anim-pulse mb-5">
+                    Loading Models
+                </p>
 
-        const Joystick: React.FC<{ joystickRef: React.MutableRefObject<JoystickData> }> = ({ joystickRef }) => {
-            const baseRef = useRef<HTMLDivElement>(null);
-            const thumbRef = useRef<HTMLDivElement>(null);
-            const [thumbPos, setThumbPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-            const [pressing, setPressing] = useState<boolean>(false);
-
-            const getCenter = useCallback((): { x: number; y: number } => {
-                if (!baseRef.current) return { x: 0, y: 0 };
-                const rect: DOMRect = baseRef.current.getBoundingClientRect();
-                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-            }, []);
-
-            const processInput = useCallback((clientX: number, clientY: number): void => {
-                const center = getCenter();
-                let dx: number = clientX - center.x;
-                let dy: number = clientY - center.y;
-                const dist: number = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist > JOY_RADIUS) {
-                    dx = (dx / dist) * JOY_RADIUS;
-                    dy = (dy / dist) * JOY_RADIUS;
-                }
-
-                setThumbPos({ x: dx, y: dy });
-                joystickRef.current.x = dx / JOY_RADIUS;
-                joystickRef.current.y = dy / JOY_RADIUS;
-            }, [getCenter, joystickRef]);
-
-            const resetJoystick = useCallback((): void => {
-                joystickRef.current = { active: false, touchId: null, x: 0, y: 0 };
-                setThumbPos({ x: 0, y: 0 });
-                setPressing(false);
-            }, [joystickRef]);
-
-            const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>): void => {
-                e.preventDefault();
-                e.stopPropagation();
-                const touch: React.Touch = e.changedTouches[0];
-                joystickRef.current.active = true;
-                joystickRef.current.touchId = touch.identifier;
-                setPressing(true);
-                processInput(touch.clientX, touch.clientY);
-            }, [joystickRef, processInput]);
-
-            useEffect(() => {
-                const onTouchMove = (e: TouchEvent): void => {
-                    if (!joystickRef.current.active) return;
-                    for (let i = 0; i < e.changedTouches.length; i++) {
-                        const t: Touch = e.changedTouches[i];
-                        if (t.identifier === joystickRef.current.touchId) {
-                            e.preventDefault();
-                            processInput(t.clientX, t.clientY);
-                            return;
-                        }
-                    }
-                };
-
-                const onTouchEnd = (e: TouchEvent): void => {
-                    for (let i = 0; i < e.changedTouches.length; i++) {
-                        if (e.changedTouches[i].identifier === joystickRef.current.touchId) {
-                            resetJoystick();
-                            return;
-                        }
-                    }
-                };
-
-                const onMouseMove = (e: MouseEvent): void => {
-                    if (joystickRef.current.active && joystickRef.current.touchId === -1) {
-                        processInput(e.clientX, e.clientY);
-                    }
-                };
-
-                const onMouseUp = (): void => {
-                    if (joystickRef.current.active && joystickRef.current.touchId === -1) {
-                        resetJoystick();
-                    }
-                };
-
-                window.addEventListener('touchmove', onTouchMove, { passive: false });
-                window.addEventListener('touchend', onTouchEnd);
-                window.addEventListener('touchcancel', onTouchEnd);
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-
-                return () => {
-                    window.removeEventListener('touchmove', onTouchMove);
-                    window.removeEventListener('touchend', onTouchEnd);
-                    window.removeEventListener('touchcancel', onTouchEnd);
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
-                };
-            }, [joystickRef, processInput, resetJoystick]);
-
-            const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>): void => {
-                joystickRef.current.active = true;
-                joystickRef.current.touchId = -1;
-                setPressing(true);
-                processInput(e.clientX, e.clientY);
-            }, [joystickRef, processInput]);
-
-            return (
-                <div className="fixed bottom-8 left-6 z-30 select-none anim-fadeup" style={{ animationDelay: '0.3s' }}>
-                    <div
-                        ref={baseRef}
-                        onTouchStart={handleTouchStart}
-                        onMouseDown={handleMouseDown}
-                        className={`relative w-36 h-36 rounded-full border-2 transition-all duration-200 ${
-                            pressing
-                                ? 'bg-black/10 border-black/25 scale-95'
-                                : 'bg-black/[0.06] border-black/[0.12]'
-                        }`}
-                        style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
-                    >
-                        {/* Direction indicators */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="absolute top-2.5 w-1.5 h-1.5 rounded-full bg-black/10" />
-                            <div className="absolute bottom-2.5 w-1.5 h-1.5 rounded-full bg-black/10" />
-                            <div className="absolute left-2.5 w-1.5 h-1.5 rounded-full bg-black/10" />
-                            <div className="absolute right-2.5 w-1.5 h-1.5 rounded-full bg-black/10" />
-                        </div>
-
-                        {/* Thumb */}
-                        <div
-                            ref={thumbRef}
-                            className={`absolute w-14 h-14 rounded-full pointer-events-none transition-shadow duration-150
-                                        top-1/2 left-1/2 ${pressing ? 'shadow-lg shadow-black/20' : 'shadow-md shadow-black/15'}`}
-                            style={{
-                                transform: `translate(calc(-50% + ${thumbPos.x}px), calc(-50% + ${thumbPos.y}px))`,
-                                background: pressing
-                                    ? 'radial-gradient(circle, rgba(40,40,40,0.7) 0%, rgba(20,20,20,0.8) 100%)'
-                                    : 'radial-gradient(circle, rgba(70,70,70,0.5) 0%, rgba(40,40,40,0.6) 100%)',
-                            }}
-                        />
-                    </div>
-                </div>
-            );
-        };
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  ANIMATION STATE INDICATOR
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-        const StateIndicator: React.FC<{ moving: boolean }> = ({ moving }) => (
-            <div className="fixed top-4 right-4 z-30 pointer-events-none anim-fadeup" style={{ animationDelay: '0.6s' }}>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium tracking-wide
-                                 transition-all duration-300 backdrop-blur-md ${
-                    moving
-                        ? 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/20'
-                        : 'bg-gray-500/10 text-gray-500 border border-gray-500/15'
-                }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                        moving ? 'bg-emerald-500' : 'bg-gray-400'
-                    }`} />
-                    {moving ? 'WALKING' : 'IDLE'}
+                {/* Progress bar */}
+                <div className="w-52 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-gray-700 rounded-full"
+                         style={{
+                             width: `${progress}%`,
+                             transition: 'width 0.4s ease-out'
+                         }} />
                 </div>
             </div>
         );
+    });
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  THREE.JS SCENE BUILDER
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  STATE BADGE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        function buildScene(canvas: HTMLCanvasElement): {
-            scene: THREE.Scene;
-            camera: THREE.PerspectiveCamera;
-            renderer: THREE.WebGLRenderer;
-            ground: THREE.Mesh;
-            grid: THREE.GridHelper;
-            dirLight: THREE.DirectionalLight;
-            shadowBlob: THREE.Mesh;
-            particles: THREE.Points;
-        } {
-            // Scene
-            const scene: THREE.Scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff);
-            scene.fog = new THREE.FogExp2(0xffffff, 0.018);
+    const StateBadge: React.FC<{ moving: boolean }> = memo(({ moving }) => (
+        <div className="fixed top-4 right-4 z-30 pointer-events-none anim-fade"
+             style={{ animationDelay: '0.5s' }}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider
+                             border transition-all duration-300 backdrop-blur-sm ${
+                moving
+                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-400/25'
+                    : 'bg-gray-500/10 text-gray-500 border-gray-400/20'
+            }`}>
+                <span className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                    moving ? 'bg-emerald-500' : 'bg-gray-400'
+                }`} />
+                {moving ? 'WALKING' : 'IDLE'}
+            </div>
+        </div>
+    ));
 
-            // Camera
-            const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(
-                55, window.innerWidth / window.innerHeight, 0.1, 500
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  JOYSTICK
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const Joystick: React.FC<{ inputRef: React.MutableRefObject<JoystickInput> }> = ({ inputRef }) => {
+        const baseRef = useRef<HTMLDivElement>(null);
+        const [thumbOffset, setThumbOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+        const [pressed, setPressed] = useState<boolean>(false);
+
+        const getCenter = useCallback((): { x: number; y: number } => {
+            if (!baseRef.current) return { x: 0, y: 0 };
+            const r: DOMRect = baseRef.current.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }, []);
+
+        const process = useCallback((cx: number, cy: number): void => {
+            const c = getCenter();
+            let dx: number = cx - c.x;
+            let dy: number = cy - c.y;
+            const dist: number = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > CONFIG.joyRadius) {
+                dx = (dx / dist) * CONFIG.joyRadius;
+                dy = (dy / dist) * CONFIG.joyRadius;
+            }
+
+            setThumbOffset({ x: dx, y: dy });
+            inputRef.current.x = dx / CONFIG.joyRadius;
+            inputRef.current.y = dy / CONFIG.joyRadius;
+        }, [getCenter, inputRef]);
+
+        const reset = useCallback((): void => {
+            inputRef.current = { active: false, touchId: null, x: 0, y: 0 };
+            setThumbOffset({ x: 0, y: 0 });
+            setPressed(false);
+        }, [inputRef]);
+
+        // Touch start on joystick base
+        const onTouchStart = useCallback((e: React.TouchEvent): void => {
+            e.preventDefault();
+            e.stopPropagation();
+            const t: React.Touch = e.changedTouches[0];
+            inputRef.current.active = true;
+            inputRef.current.touchId = t.identifier;
+            setPressed(true);
+            process(t.clientX, t.clientY);
+        }, [inputRef, process]);
+
+        // Mouse down (desktop fallback)
+        const onMouseDown = useCallback((e: React.MouseEvent): void => {
+            inputRef.current.active = true;
+            inputRef.current.touchId = -1;
+            setPressed(true);
+            process(e.clientX, e.clientY);
+        }, [inputRef, process]);
+
+        // Global touch/mouse listeners
+        useEffect(() => {
+            const handleTouchMove = (e: TouchEvent): void => {
+                if (!inputRef.current.active) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t: Touch = e.changedTouches[i];
+                    if (t.identifier === inputRef.current.touchId) {
+                        e.preventDefault();
+                        process(t.clientX, t.clientY);
+                        return;
+                    }
+                }
+            };
+
+            const handleTouchEnd = (e: TouchEvent): void => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === inputRef.current.touchId) {
+                        reset();
+                        return;
+                    }
+                }
+            };
+
+            const handleMouseMove = (e: MouseEvent): void => {
+                if (inputRef.current.active && inputRef.current.touchId === -1) {
+                    process(e.clientX, e.clientY);
+                }
+            };
+
+            const handleMouseUp = (): void => {
+                if (inputRef.current.active && inputRef.current.touchId === -1) {
+                    reset();
+                }
+            };
+
+            window.addEventListener('touchmove', handleTouchMove, { passive: false });
+            window.addEventListener('touchend', handleTouchEnd);
+            window.addEventListener('touchcancel', handleTouchEnd);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+
+            return () => {
+                window.removeEventListener('touchmove', handleTouchMove);
+                window.removeEventListener('touchend', handleTouchEnd);
+                window.removeEventListener('touchcancel', handleTouchEnd);
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
+        }, [inputRef, process, reset]);
+
+        return (
+            <div className="fixed bottom-8 left-6 z-30 select-none anim-fade"
+                 style={{ animationDelay: '0.3s' }}>
+                <div
+                    ref={baseRef}
+                    onTouchStart={onTouchStart}
+                    onMouseDown={onMouseDown}
+                    className={`relative w-36 h-36 rounded-full border-2 transition-all duration-150 ${
+                        pressed
+                            ? 'bg-black/[0.08] border-black/20 scale-[0.96]'
+                            : 'bg-black/[0.04] border-black/[0.1]'
+                    }`}
+                    style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+                >
+                    {/* Cardinal dots */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
+                    </div>
+
+                    {/* Crosshair lines */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div className="absolute w-px h-8 bg-black/[0.04]" />
+                        <div className="absolute w-8 h-px bg-black/[0.04]" />
+                    </div>
+
+                    {/* Thumb knob */}
+                    <div
+                        className={`absolute w-14 h-14 rounded-full pointer-events-none
+                                    top-1/2 left-1/2 transition-shadow duration-100 ${
+                            pressed ? 'shadow-lg shadow-black/25' : 'shadow-md shadow-black/15'
+                        }`}
+                        style={{
+                            transform: `translate(calc(-50% + ${thumbOffset.x}px), calc(-50% + ${thumbOffset.y}px))`,
+                            background: pressed
+                                ? 'radial-gradient(circle, rgba(40,40,40,0.75), rgba(20,20,20,0.85))'
+                                : 'radial-gradient(circle, rgba(80,80,80,0.45), rgba(50,50,50,0.55))',
+                        }}
+                    >
+                        {/* Inner highlight */}
+                        <div className="absolute inset-2 rounded-full bg-white/10" />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  THREE.JS SCENE BUILDER
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    interface SceneObjects {
+        scene: THREE.Scene;
+        camera: THREE.PerspectiveCamera;
+        renderer: THREE.WebGLRenderer;
+        ground: THREE.Mesh;
+        grid: THREE.GridHelper;
+        dirLight: THREE.DirectionalLight;
+        shadowBlob: THREE.Mesh;
+        particles: THREE.Points;
+    }
+
+    function createScene(canvas: HTMLCanvasElement): SceneObjects {
+        const scene = new Scene();
+        scene.background = new Color(0xffffff);
+        scene.fog = new FogExp2(0xffffff, 0.018);
+
+        const camera = new PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+        camera.position.set(0, 4.5, 8);
+
+        const renderer = new WebGLRenderer({
+            canvas,
+            antialias: true,
+            powerPreference: 'high-performance',
+        });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = PCFSoftShadowMap;
+        renderer.toneMapping = ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
+        // ── Lights ──
+        scene.add(new AmbientLight(0xffffff, 0.7));
+        scene.add(new HemisphereLight(0xffffff, 0xf5f5f5, 0.5));
+
+        const dirLight = new DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(8, 15, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(1024, 1024);
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 50;
+        const s: number = 15;
+        dirLight.shadow.camera.left = -s;
+        dirLight.shadow.camera.right = s;
+        dirLight.shadow.camera.top = s;
+        dirLight.shadow.camera.bottom = -s;
+        dirLight.shadow.bias = -0.001;
+        scene.add(dirLight);
+        scene.add(dirLight.target);
+
+        // ── Ground ──
+        const ground = new Mesh(
+            new PlaneGeometry(500, 500),
+            new MeshStandardMaterial({ color: 0xfafafa, roughness: 0.95, metalness: 0 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // ── Grid ──
+        const grid = new GridHelper(500, 250, 0xe0e0e0, 0xededed);
+        (grid.material as THREE.Material).transparent = true;
+        (grid.material as THREE.Material).opacity = 0.4;
+        scene.add(grid);
+
+        // ── Shadow blob under character ──
+        const shadowBlob = new Mesh(
+            new CircleGeometry(0.5, 32),
+            new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false })
+        );
+        shadowBlob.rotation.x = -Math.PI / 2;
+        shadowBlob.position.y = 0.01;
+        scene.add(shadowBlob);
+
+        // ── Ambient particles ──
+        const count: number = 150;
+        const geo = new BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            pos[i * 3]     = (Math.random() - 0.5) * 80;
+            pos[i * 3 + 1] = Math.random() * 12 + 0.5;
+            pos[i * 3 + 2] = (Math.random() - 0.5) * 80;
+        }
+        geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
+        const particles = new Points(geo, new PointsMaterial({
+            color: 0xc0c0c0, size: 0.07, transparent: true, opacity: 0.5, sizeAttenuation: true,
+        }));
+        scene.add(particles);
+
+        return { scene, camera, renderer, ground, grid, dirLight, shadowBlob, particles };
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  MODEL LOADER  (parallel fetch, shared skeleton)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    interface LoadedAssets {
+        model: THREE.Group;
+        mixer: THREE.AnimationMixer;
+        idleAction: THREE.AnimationAction;
+        walkAction: THREE.AnimationAction;
+    }
+
+    function loadGameModels(
+        scene: THREE.Scene,
+        onProgress: (pct: number) => void
+    ): Promise<LoadedAssets> {
+        return new Promise((resolve, reject) => {
+            const loader = new GLTFLoader();
+            let loaded: number = 0;
+            const results: any[] = [null, null];
+
+            function tick(): void {
+                loaded++;
+                onProgress((loaded / 2) * 100);
+                if (loaded === 2) finish();
+            }
+
+            function finish(): void {
+                const idleGltf = results[0];
+                const walkGltf = results[1];
+
+                if (!idleGltf || !walkGltf) {
+                    reject(new Error('One or both models failed to load'));
+                    return;
+                }
+
+                // Use idle model as the visible character
+                const model: THREE.Group = idleGltf.scene;
+
+                // Scale to ~1.8 units
+                const box = new Box3().setFromObject(model);
+                const size = box.getSize(new Vector3());
+                const scale: number = 1.8 / size.y;
+                model.scale.setScalar(scale);
+
+                // Enable shadows
+                model.traverse((child: THREE.Object3D) => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        (child as THREE.Mesh).castShadow = true;
+                        (child as THREE.Mesh).receiveShadow = true;
+                    }
+                });
+
+                model.position.set(0, 0, 0);
+                scene.add(model);
+
+                // Mixer on the base model
+                const mixer = new AnimationMixer(model);
+
+                const idleClip: THREE.AnimationClip = idleGltf.animations[0];
+                const walkClip: THREE.AnimationClip = walkGltf.animations[0];
+
+                const idleAction: THREE.AnimationAction = mixer.clipAction(idleClip);
+                const walkAction: THREE.AnimationAction = mixer.clipAction(walkClip);
+
+                idleAction.setLoop(LoopRepeat, Infinity);
+                walkAction.setLoop(LoopRepeat, Infinity);
+
+                // Start idle, both "playing" but walk at weight 0
+                idleAction.setEffectiveWeight(1);
+                walkAction.setEffectiveWeight(0);
+                idleAction.play();
+                walkAction.play();
+
+                resolve({ model, mixer, idleAction, walkAction });
+            }
+
+            // Fire both loads in parallel
+            loader.load(IDLE_URL,
+                (gltf: any) => { results[0] = gltf; tick(); },
+                undefined,
+                (err: any) => { console.error('Idle load failed:', err); tick(); }
             );
-            camera.position.set(0, 4.5, 8);
 
-            // Renderer
-            const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({
-                canvas,
-                antialias: true,
-                alpha: false,
-                powerPreference: 'high-performance',
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
+            loader.load(WALK_URL,
+                (gltf: any) => { results[1] = gltf; tick(); },
+                undefined,
+                (err: any) => { console.error('Walk load failed:', err); tick(); }
+            );
+        });
+    }
 
-            // Lighting
-            const ambientLight: THREE.AmbientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  CROSSFADE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            const hemiLight: THREE.HemisphereLight = new THREE.HemisphereLight(0xffffff, 0xf5f5f5, 0.5);
-            scene.add(hemiLight);
+    function crossFade(
+        from: THREE.AnimationAction,
+        to: THREE.AnimationAction,
+        duration: number
+    ): void {
+        to.reset();
+        to.setEffectiveTimeScale(1);
+        to.setEffectiveWeight(1);
+        to.play();
+        from.crossFadeTo(to, duration, true);
+    }
 
-            const dirLight: THREE.DirectionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            dirLight.position.set(8, 15, 10);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.set(1024, 1024);
-            dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 50;
-            const sc: number = 15;
-            dirLight.shadow.camera.left = -sc;
-            dirLight.shadow.camera.right = sc;
-            dirLight.shadow.camera.top = sc;
-            dirLight.shadow.camera.bottom = -sc;
-            dirLight.shadow.bias = -0.001;
-            scene.add(dirLight);
-            scene.add(dirLight.target);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  MAIN APP
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            // Ground
-            const groundGeo: THREE.PlaneGeometry = new THREE.PlaneGeometry(500, 500);
-            const groundMat: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
-                color: 0xfafafa,
-                roughness: 0.95,
-                metalness: 0.0,
-            });
-            const ground: THREE.Mesh = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
+    const App: React.FC = () => {
+        const canvasRef = useRef<HTMLCanvasElement>(null);
+        const [loading, setLoading] = useState<boolean>(true);
+        const [progress, setProgress] = useState<number>(0);
+        const [moving, setMoving] = useState<boolean>(false);
 
-            // Grid
-            const grid: THREE.GridHelper = new THREE.GridHelper(500, 250, 0xe0e0e0, 0xededed);
-            (grid.material as THREE.Material).transparent = true;
-            (grid.material as THREE.Material).opacity = 0.45;
-            scene.add(grid);
+        const joystick = useRef<JoystickInput>({ active: false, touchId: null, x: 0, y: 0 });
+        const keys = useRef<Record<string, boolean>>({});
 
-            // Shadow Blob
-            const blobGeo: THREE.CircleGeometry = new THREE.CircleGeometry(0.5, 32);
-            const blobMat: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial({
-                color: 0x000000,
-                transparent: true,
-                opacity: 0.12,
-                depthWrite: false,
-            });
-            const shadowBlob: THREE.Mesh = new THREE.Mesh(blobGeo, blobMat);
-            shadowBlob.rotation.x = -Math.PI / 2;
-            shadowBlob.position.y = 0.01;
-            scene.add(shadowBlob);
+        // ── Keyboard ──
+        useEffect(() => {
+            const down = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+            const up   = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+            const block = (e: Event) => e.preventDefault();
 
-            // Particles
-            const pCount: number = 150;
-            const pGeo: THREE.BufferGeometry = new THREE.BufferGeometry();
-            const positions: Float32Array = new Float32Array(pCount * 3);
-            for (let i: number = 0; i < pCount; i++) {
-                positions[i * 3]     = (Math.random() - 0.5) * 80;
-                positions[i * 3 + 1] = Math.random() * 12 + 0.5;
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
-            }
-            pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const pMat: THREE.PointsMaterial = new THREE.PointsMaterial({
-                color: 0xc0c0c0,
-                size: 0.07,
-                transparent: true,
-                opacity: 0.5,
-                sizeAttenuation: true,
-            });
-            const particles: THREE.Points = new THREE.Points(pGeo, pMat);
-            scene.add(particles);
+            window.addEventListener('keydown', down);
+            window.addEventListener('keyup', up);
+            document.addEventListener('gesturestart', block);
+            document.addEventListener('gesturechange', block);
 
-            return { scene, camera, renderer, ground, grid, dirLight, shadowBlob, particles };
-        }
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  MODEL LOADER
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-        async function loadModels(
-            scene: THREE.Scene,
-            onProgress: (pct: number) => void
-        ): Promise<{ model: THREE.Group; anims: AnimationState }> {
-            const loader: GLTFLoader = new GLTFLoader();
-            let totalLoaded: number = 0;
-
-            const trackProgress = (): void => {
-                totalLoaded++;
-                onProgress((totalLoaded / 2) * 100);
+            return () => {
+                window.removeEventListener('keydown', down);
+                window.removeEventListener('keyup', up);
+                document.removeEventListener('gesturestart', block);
+                document.removeEventListener('gesturechange', block);
             };
+        }, []);
 
-            // Load both models in parallel
-            const [idleGltf, walkGltf] = await Promise.all([
-                new Promise<any>((resolve, reject) => {
-                    loader.load(IDLE_URL, (gltf: any) => { trackProgress(); resolve(gltf); },
-                        undefined, reject);
-                }),
-                new Promise<any>((resolve, reject) => {
-                    loader.load(WALK_URL, (gltf: any) => { trackProgress(); resolve(gltf); },
-                        undefined, reject);
-                }),
-            ]);
+        // ── Three.js engine ──
+        useEffect(() => {
+            const canvas: HTMLCanvasElement | null = canvasRef.current;
+            if (!canvas) return;
 
-            // Use the idle model as the base character mesh
-            const model: THREE.Group = idleGltf.scene;
+            const objs: SceneObjects = createScene(canvas);
+            const { scene, camera, renderer, ground, grid, dirLight, shadowBlob, particles } = objs;
 
-            // Auto-scale to ~1.8 units tall
-            const box: THREE.Box3 = new THREE.Box3().setFromObject(model);
-            const size: THREE.Vector3 = box.getSize(new THREE.Vector3());
-            const desiredHeight: number = 1.8;
-            const scale: number = desiredHeight / size.y;
-            model.scale.setScalar(scale);
+            // Mutable game state (no re-renders)
+            const pos = new Vector3(0, 0, 0);
+            let rotY: number = 0;
+            let isMoving: boolean = false;
+            let wasMoving: boolean = false;
 
-            // Enable shadows on all meshes
-            model.traverse((child: THREE.Object3D) => {
-                if ((child as THREE.Mesh).isMesh) {
-                    (child as THREE.Mesh).castShadow = true;
-                    (child as THREE.Mesh).receiveShadow = true;
-                }
-            });
+            // Animation state
+            let mixer: THREE.AnimationMixer | null = null;
+            let idleAction: THREE.AnimationAction | null = null;
+            let walkAction: THREE.AnimationAction | null = null;
+            let currentAction: THREE.AnimationAction | null = null;
+            let model: THREE.Group | null = null;
 
-            model.position.set(0, 0, 0);
-            scene.add(model);
+            const clock = new Clock();
+            const camTarget = new Vector3();
+            const lookTarget = new Vector3();
+            const CAM_OFFSET = new Vector3(0, 4.5, 7.5);
+            const CAM_LOOK = new Vector3(0, 1.2, 0);
+            let animId: number = 0;
 
-            // Setup animation mixer on base model
-            const mixer: THREE.AnimationMixer = new THREE.AnimationMixer(model);
+            // Load models
+            loadGameModels(scene, (pct: number) => setProgress(pct))
+                .then((assets: LoadedAssets) => {
+                    model = assets.model;
+                    mixer = assets.mixer;
+                    idleAction = assets.idleAction;
+                    walkAction = assets.walkAction;
+                    currentAction = idleAction;
+                    console.log('✅ Models ready');
+                    setTimeout(() => setLoading(false), 500);
+                })
+                .catch((e: Error) => console.error('❌', e));
 
-            // Get animation clips
-            const idleClip: THREE.AnimationClip = idleGltf.animations[0];
-            const walkClip: THREE.AnimationClip = walkGltf.animations[0];
-
-            // Create actions
-            const idleAction: THREE.AnimationAction = mixer.clipAction(idleClip);
-            const walkAction: THREE.AnimationAction = mixer.clipAction(walkClip);
-
-            // Configure actions
-            idleAction.setLoop(THREE.LoopRepeat, Infinity);
-            walkAction.setLoop(THREE.LoopRepeat, Infinity);
-
-            // Start both with weight control
-            idleAction.setEffectiveWeight(1);
-            walkAction.setEffectiveWeight(0);
-            idleAction.play();
-            walkAction.play();
-
-            const anims: AnimationState = {
-                mixer,
-                idleAction,
-                walkAction,
-                activeAction: idleAction,
-            };
-
-            return { model, anims };
-        }
-
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  CROSSFADE HELPER
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-        function crossFadeTo(
-            anims: AnimationState,
-            newAction: THREE.AnimationAction,
-            duration: number
-        ): void {
-            if (anims.activeAction === newAction) return;
-
-            const prevAction: THREE.AnimationAction | null = anims.activeAction;
-            anims.activeAction = newAction;
-
-            newAction.reset();
-            newAction.setEffectiveTimeScale(1);
-            newAction.setEffectiveWeight(1);
-            newAction.play();
-
-            if (prevAction) {
-                prevAction.crossFadeTo(newAction, duration, true);
+            // Keyboard input
+            function kbInput(): { x: number; y: number } {
+                const k = keys.current;
+                let x = 0, y = 0;
+                if (k['KeyA'] || k['ArrowLeft'])  x -= 1;
+                if (k['KeyD'] || k['ArrowRight']) x += 1;
+                if (k['KeyW'] || k['ArrowUp'])    y -= 1;
+                if (k['KeyS'] || k['ArrowDown'])  y += 1;
+                const m = Math.sqrt(x * x + y * y);
+                if (m > 1) { x /= m; y /= m; }
+                return { x, y };
             }
-        }
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  MAIN APP COMPONENT
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // Snap ground for infinite illusion
+            function snapGround(): void {
+                const sn = 2;
+                const sx = Math.round(pos.x / sn) * sn;
+                const sz = Math.round(pos.z / sn) * sn;
+                ground.position.x = sx; ground.position.z = sz;
+                grid.position.x = sx; grid.position.z = sz;
+            }
 
-        const App: React.FC = () => {
-            const canvasRef = useRef<HTMLCanvasElement>(null);
-            const [loading, setLoading] = useState<boolean>(true);
-            const [progress, setProgress] = useState<number>(0);
-            const [isMoving, setIsMoving] = useState<boolean>(false);
+            // ── GAME LOOP ──
+            function loop(): void {
+                animId = requestAnimationFrame(loop);
+                const dt: number = Math.min(clock.getDelta(), 0.05);
 
-            const joystickData = useRef<JoystickData>({ active: false, touchId: null, x: 0, y: 0 });
-            const keysRef = useRef<KeysMap>({});
+                // Merge inputs
+                const kb = kbInput();
+                let ix: number = joystick.current.x + kb.x;
+                let iy: number = joystick.current.y + kb.y;
+                let mag: number = Math.sqrt(ix * ix + iy * iy);
+                if (mag > 1) { ix /= mag; iy /= mag; mag = 1; }
 
-            // Keyboard handlers
-            useEffect(() => {
-                const onKeyDown = (e: KeyboardEvent): void => { keysRef.current[e.code] = true; };
-                const onKeyUp   = (e: KeyboardEvent): void => { keysRef.current[e.code] = false; };
-                const preventGestures = (e: Event): void => { e.preventDefault(); };
+                isMoving = mag > CONFIG.deadZone;
 
-                window.addEventListener('keydown', onKeyDown);
-                window.addEventListener('keyup', onKeyUp);
-                document.addEventListener('gesturestart', preventGestures);
-                document.addEventListener('gesturechange', preventGestures);
+                if (model) {
+                    // ── Movement ──
+                    if (isMoving) {
+                        pos.x += ix * CONFIG.moveSpeed * dt;
+                        pos.z += iy * CONFIG.moveSpeed * dt;
 
-                return () => {
-                    window.removeEventListener('keydown', onKeyDown);
-                    window.removeEventListener('keyup', onKeyUp);
-                    document.removeEventListener('gesturestart', preventGestures);
-                    document.removeEventListener('gesturechange', preventGestures);
-                };
-            }, []);
-
-            // Main Three.js setup
-            useEffect(() => {
-                if (!canvasRef.current) return;
-
-                const {
-                    scene, camera, renderer, ground, grid, dirLight, shadowBlob, particles
-                } = buildScene(canvasRef.current);
-
-                // Game state refs (mutable, no re-render)
-                const gameState: GameState = {
-                    playerPos: new THREE.Vector3(0, 0, 0),
-                    playerRotY: 0,
-                    isMoving: false,
-                    wasMoving: false,
-                };
-
-                let animState: AnimationState = {
-                    mixer: null,
-                    idleAction: null,
-                    walkAction: null,
-                    activeAction: null,
-                };
-
-                let model: THREE.Group | null = null;
-                let frameId: number = 0;
-                const clock: THREE.Clock = new THREE.Clock();
-
-                // Smoothing helpers
-                const camTarget: THREE.Vector3 = new THREE.Vector3();
-                const lookTarget: THREE.Vector3 = new THREE.Vector3();
-                const camOffset: THREE.Vector3 = new THREE.Vector3(0, 4.5, 7.5);
-                const camLookOffset: THREE.Vector3 = new THREE.Vector3(0, 1.2, 0);
-
-                // Load models
-                loadModels(scene, (pct: number) => setProgress(pct))
-                    .then(({ model: m, anims }) => {
-                        model = m;
-                        animState = anims;
-                        setTimeout(() => setLoading(false), 500);
-                    })
-                    .catch((err: Error) => console.error('Model load failed:', err));
-
-                // Keyboard input reader
-                function getKeyboardInput(): { x: number; y: number } {
-                    const k: KeysMap = keysRef.current;
-                    let kx: number = 0;
-                    let ky: number = 0;
-                    if (k['KeyA'] || k['ArrowLeft'])  kx -= 1;
-                    if (k['KeyD'] || k['ArrowRight']) kx += 1;
-                    if (k['KeyW'] || k['ArrowUp'])    ky -= 1;
-                    if (k['KeyS'] || k['ArrowDown'])  ky += 1;
-                    const m: number = Math.sqrt(kx * kx + ky * ky);
-                    if (m > 1) { kx /= m; ky /= m; }
-                    return { x: kx, y: ky };
-                }
-
-                // Infinite ground re-centering
-                function snapGround(pos: THREE.Vector3): void {
-                    const snap: number = 2;
-                    const sx: number = Math.round(pos.x / snap) * snap;
-                    const sz: number = Math.round(pos.z / snap) * snap;
-                    ground.position.x = sx;
-                    ground.position.z = sz;
-                    grid.position.x = sx;
-                    grid.position.z = sz;
-                }
-
-                // ── GAME LOOP ──
-                function animate(): void {
-                    frameId = requestAnimationFrame(animate);
-                    const dt: number = Math.min(clock.getDelta(), 0.05);
-
-                    // Combine input
-                    const kb = getKeyboardInput();
-                    let ix: number = joystickData.current.x + kb.x;
-                    let iy: number = joystickData.current.y + kb.y;
-                    let mag: number = Math.sqrt(ix * ix + iy * iy);
-                    if (mag > 1) { ix /= mag; iy /= mag; mag = 1; }
-
-                    gameState.isMoving = mag > DEAD_ZONE;
-
-                    if (model) {
-                        // Movement
-                        if (gameState.isMoving) {
-                            gameState.playerPos.x += ix * MOVE_SPEED * dt;
-                            gameState.playerPos.z += iy * MOVE_SPEED * dt;
-
-                            // Rotation towards movement direction
-                            const targetRot: number = Math.atan2(-ix, -iy);
-                            let diff: number = targetRot - gameState.playerRotY;
-                            if (diff > Math.PI)  diff -= Math.PI * 2;
-                            if (diff < -Math.PI) diff += Math.PI * 2;
-                            gameState.playerRotY += diff * ROT_LERP * dt;
-                        }
-
-                        model.position.copy(gameState.playerPos);
-                        model.rotation.y = gameState.playerRotY;
-
-                        // Shadow blob
-                        shadowBlob.position.x = gameState.playerPos.x;
-                        shadowBlob.position.z = gameState.playerPos.z;
-
-                        // ── Animation crossfading ──
-                        if (gameState.isMoving && !gameState.wasMoving) {
-                            // Started moving → crossfade to walk
-                            if (animState.walkAction) {
-                                crossFadeTo(animState, animState.walkAction, CROSSFADE_DUR);
-                            }
-                        } else if (!gameState.isMoving && gameState.wasMoving) {
-                            // Stopped moving → crossfade to idle
-                            if (animState.idleAction) {
-                                crossFadeTo(animState, animState.idleAction, CROSSFADE_DUR);
-                            }
-                        }
-
-                        // Walk speed scales with input magnitude
-                        if (gameState.isMoving && animState.walkAction) {
-                            const targetSpeed: number = 0.7 + mag * 0.5;
-                            const currentSpeed: number = animState.walkAction.getEffectiveTimeScale();
-                            animState.walkAction.setEffectiveTimeScale(
-                                THREE.MathUtils.lerp(currentSpeed, targetSpeed, 8 * dt)
-                            );
-                        }
-
-                        gameState.wasMoving = gameState.isMoving;
-
-                        // Camera follow
-                        camTarget.copy(gameState.playerPos).add(camOffset);
-                        camera.position.lerp(camTarget, 1 - Math.exp(-CAM_SMOOTHING * dt));
-
-                        lookTarget.copy(gameState.playerPos).add(camLookOffset);
-                        camera.lookAt(lookTarget);
-
-                        // Directional light follows player
-                        dirLight.position.set(
-                            gameState.playerPos.x + 8, 15, gameState.playerPos.z + 10
-                        );
-                        dirLight.target.position.copy(gameState.playerPos);
-
-                        // Infinite ground
-                        snapGround(gameState.playerPos);
-
-                        // Particles follow
-                        particles.position.x = gameState.playerPos.x;
-                        particles.position.z = gameState.playerPos.z;
+                        const target: number = Math.atan2(-ix, -iy);
+                        let diff: number = target - rotY;
+                        if (diff > Math.PI)  diff -= Math.PI * 2;
+                        if (diff < -Math.PI) diff += Math.PI * 2;
+                        rotY += diff * CONFIG.rotLerp * dt;
                     }
 
-                    // Gentle particle drift
-                    particles.rotation.y += dt * 0.015;
+                    model.position.copy(pos);
+                    model.rotation.y = rotY;
 
-                    // Update mixer
-                    if (animState.mixer) animState.mixer.update(dt);
+                    shadowBlob.position.x = pos.x;
+                    shadowBlob.position.z = pos.z;
 
-                    // Update React state for UI (throttled by RAF)
-                    setIsMoving(gameState.isMoving);
+                    // ── Animation transitions ──
+                    if (isMoving && !wasMoving && walkAction && idleAction) {
+                        crossFade(idleAction, walkAction, CONFIG.crossfadeDuration);
+                        currentAction = walkAction;
+                    } else if (!isMoving && wasMoving && idleAction && walkAction) {
+                        crossFade(walkAction, idleAction, CONFIG.crossfadeDuration);
+                        currentAction = idleAction;
+                    }
 
-                    renderer.render(scene, camera);
+                    // Scale walk speed with magnitude
+                    if (isMoving && walkAction) {
+                        const desiredSpeed: number = 0.7 + mag * 0.5;
+                        const curSpeed: number = walkAction.getEffectiveTimeScale();
+                        walkAction.setEffectiveTimeScale(
+                            MathUtils.lerp(curSpeed, desiredSpeed, 8 * dt)
+                        );
+                    }
+
+                    wasMoving = isMoving;
+
+                    // ── Camera ──
+                    camTarget.copy(pos).add(CAM_OFFSET);
+                    camera.position.lerp(camTarget, 1 - Math.exp(-CONFIG.camSmooth * dt));
+                    lookTarget.copy(pos).add(CAM_LOOK);
+                    camera.lookAt(lookTarget);
+
+                    // ── Light follows player ──
+                    dirLight.position.set(pos.x + 8, 15, pos.z + 10);
+                    dirLight.target.position.copy(pos);
+
+                    // ── Infinite ground ──
+                    snapGround();
+
+                    // ── Particles follow ──
+                    particles.position.x = pos.x;
+                    particles.position.z = pos.z;
                 }
 
-                animate();
+                particles.rotation.y += dt * 0.015;
+                if (mixer) mixer.update(dt);
 
-                // Resize handler
-                const onResize = (): void => {
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                };
-                window.addEventListener('resize', onResize);
+                // Push UI state
+                setMoving(isMoving);
 
-                return () => {
-                    cancelAnimationFrame(frameId);
-                    window.removeEventListener('resize', onResize);
-                    renderer.dispose();
-                };
-            }, []);
+                renderer.render(scene, camera);
+            }
 
-            return (
-                <div className="relative w-full h-full">
-                    {/* Three.js Canvas */}
-                    <canvas ref={canvasRef} className="block w-full h-full" />
+            loop();
 
-                    {/* Loading Screen */}
-                    <LoadingScreen progress={progress} visible={loading} />
+            // Resize
+            const onResize = (): void => {
+                camera.aspect = innerWidth / innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            };
+            window.addEventListener('resize', onResize);
 
-                    {/* HUD - only visible after loaded */}
-                    {!loading && (
-                        <>
-                            {/* Top info bar */}
-                            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none anim-fadeup">
-                                <p className="text-gray-400 text-xs tracking-widest uppercase text-center">
-                                    Joystick to move · WASD on desktop
-                                </p>
-                            </div>
+            return () => {
+                cancelAnimationFrame(animId);
+                window.removeEventListener('resize', onResize);
+                renderer.dispose();
+            };
+        }, []);
 
-                            {/* State indicator */}
-                            <StateIndicator moving={isMoving} />
+        return (
+            <div className="relative w-full h-full bg-white">
+                <canvas ref={canvasRef} className="block w-full h-full" />
 
-                            {/* Joystick */}
-                            <Joystick joystickRef={joystickData} />
-                        </>
-                    )}
-                </div>
-            );
-        };
+                <LoadingScreen progress={progress} visible={loading} />
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        //  MOUNT
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                {!loading && (
+                    <>
+                        {/* Top hint */}
+                        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30
+                                        pointer-events-none anim-fade">
+                            <p className="text-gray-300 text-[11px] tracking-[0.2em] uppercase
+                                          text-center select-none">
+                                Use joystick to walk · WASD on desktop
+                            </p>
+                        </div>
 
-        const rootEl: HTMLElement = document.getElementById('root')!;
-        const root = ReactDOM.createRoot(rootEl);
-        root.render(<App />);
+                        <StateBadge moving={moving} />
+                        <Joystick inputRef={joystick} />
+                    </>
+                )}
+            </div>
+        );
+    };
+
+    // ━━━━ MOUNT ━━━━
+    const root = ReactDOM.createRoot(document.getElementById('root')!);
+    root.render(<App />);
+
     </script>
 </body>
 </html>
