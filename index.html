@@ -5,28 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Void Walker</title>
 
-    <!-- Error overlay for iPad debugging -->
-    <script>
-        window.onerror = function(msg, src, line, col, err) {
-            var d = document.createElement('div');
-            d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#ff4444;color:#fff;padding:12px;font-size:13px;font-family:monospace;max-height:40vh;overflow:auto;';
-            d.textContent = '❌ ' + msg + ' (line ' + line + ')';
-            document.body.appendChild(d);
-            setTimeout(function() { d.remove(); }, 8000);
-        };
-    </script>
-
-    <!-- Tailwind CSS -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- React 18 -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 
-    <!-- Three.js r147 (LAST version with global examples/js support) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Three.js r147 (last version with global GLTFLoader) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,637 +26,626 @@
             user-select: none;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity:.6 } 50% { opacity:1 } }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         .anim-spin { animation: spin .9s linear infinite; }
         .anim-pulse { animation: pulse 1.5s ease-in-out infinite; }
         .anim-fade { animation: fadeIn .5s ease-out forwards; opacity: 0; }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+<div id="root"></div>
 
-    <script type="text/babel" data-presets="typescript,react">
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  React.createElement shorthand — replaces JSX entirely
+//  h('div', {className:'foo'}, 'Hello')  ===  <div className="foo">Hello</div>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var h = React.createElement;
+var useState = React.useState;
+var useEffect = React.useEffect;
+var useRef = React.useRef;
+var useCallback = React.useCallback;
+var memo = React.memo;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  VERIFY THREE.JS + GLTFLOADER LOADED
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  Three.js aliases
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var Scene            = THREE.Scene;
+var PerspectiveCamera= THREE.PerspectiveCamera;
+var WebGLRenderer    = THREE.WebGLRenderer;
+var Color            = THREE.Color;
+var FogExp2          = THREE.FogExp2;
+var AmbientLight     = THREE.AmbientLight;
+var HemisphereLight  = THREE.HemisphereLight;
+var DirectionalLight = THREE.DirectionalLight;
+var PlaneGeometry    = THREE.PlaneGeometry;
+var CircleGeometry   = THREE.CircleGeometry;
+var BufferGeometry   = THREE.BufferGeometry;
+var MeshStandardMaterial = THREE.MeshStandardMaterial;
+var MeshBasicMaterial    = THREE.MeshBasicMaterial;
+var PointsMaterial       = THREE.PointsMaterial;
+var Mesh             = THREE.Mesh;
+var Points           = THREE.Points;
+var GridHelper       = THREE.GridHelper;
+var Vector3          = THREE.Vector3;
+var Box3             = THREE.Box3;
+var Float32BufferAttribute = THREE.Float32BufferAttribute;
+var AnimationMixer   = THREE.AnimationMixer;
+var LoopRepeat       = THREE.LoopRepeat;
+var Clock            = THREE.Clock;
+var MathUtils        = THREE.MathUtils;
+var PCFSoftShadowMap = THREE.PCFSoftShadowMap;
+var ACESFilmicToneMapping = THREE.ACESFilmicToneMapping;
+var GLTFLoader       = THREE.GLTFLoader;
 
-    if (typeof THREE === 'undefined') {
-        throw new Error('THREE.js failed to load');
-    }
-    if (typeof THREE.GLTFLoader === 'undefined') {
-        throw new Error('GLTFLoader failed to load');
-    }
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  CONFIG
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var IDLE_URL   = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@2c2f1bc/Idle.glb';
+var WALK_URL   = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@b2efd08/Walking.glb';
+var MOVE_SPEED = 4.5;
+var ROT_LERP   = 12;
+var CAM_SMOOTH = 5;
+var FADE_DUR   = 0.25;
+var DEAD_ZONE  = 0.12;
+var JOY_RADIUS = 50;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  DESTRUCTURE THREE GLOBALS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  LOADING SCREEN COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var LoadingScreen = memo(function LoadingScreen(props) {
+    if (!props.visible) return null;
+    var pct = Math.round(props.progress);
 
-    const {
-        Scene, PerspectiveCamera, WebGLRenderer,
-        Color, FogExp2,
-        AmbientLight, HemisphereLight, DirectionalLight,
-        PlaneGeometry, CircleGeometry, BufferGeometry,
-        MeshStandardMaterial, MeshBasicMaterial, PointsMaterial,
-        Mesh, Points, GridHelper,
-        Vector3, Box3, Float32BufferAttribute,
-        AnimationMixer, LoopRepeat, Clock, MathUtils,
-        PCFSoftShadowMap, ACESFilmicToneMapping,
-        GLTFLoader,
-    } = THREE;
+    return h('div', { className: 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-white' },
 
-    const { useState, useEffect, useRef, useCallback, memo } = React;
+        // Spinner container
+        h('div', { className: 'relative flex items-center justify-center mb-6' },
+            h('div', {
+                className: 'w-16 h-16 rounded-full border-4 border-gray-200 anim-spin',
+                style: { borderTopColor: '#1f2937' }
+            }),
+            h('span', { className: 'absolute text-xs font-bold text-gray-600' }, pct + '%')
+        ),
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  CONFIG
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Label
+        h('p', { className: 'text-gray-400 text-sm tracking-widest uppercase anim-pulse mb-5' },
+            'Loading Models'
+        ),
 
-    const IDLE_URL  = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@2c2f1bc/Idle.glb';
-    const WALK_URL  = 'https://fastly.jsdelivr.net/gh/coolgames-ctrl/3dmodels@b2efd08/Walking.glb';
-    const MOVE_SPEED = 4.5;
-    const ROT_LERP   = 12;
-    const CAM_SMOOTH = 5;
-    const FADE_DUR   = 0.25;
-    const DEAD_ZONE  = 0.12;
-    const JOY_RADIUS = 50;
+        // Progress bar
+        h('div', { className: 'w-52 h-1.5 bg-gray-200 rounded-full overflow-hidden' },
+            h('div', {
+                className: 'h-full bg-gray-700 rounded-full',
+                style: { width: pct + '%', transition: 'width 0.4s ease-out' }
+            })
+        )
+    );
+});
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  LOADING SCREEN
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  STATE BADGE COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var StateBadge = memo(function StateBadge(props) {
+    var m = props.moving;
+    return h('div', {
+        className: 'fixed top-4 right-4 z-30 pointer-events-none anim-fade',
+        style: { animationDelay: '0.5s' }
+    },
+        h('div', {
+            className: 'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider border transition-all duration-300 ' +
+                (m ? 'bg-emerald-500/10 text-emerald-700 border-emerald-400/25'
+                    : 'bg-gray-500/10 text-gray-500 border-gray-400/20')
+        },
+            h('span', {
+                className: 'w-2 h-2 rounded-full transition-colors duration-300 ' +
+                    (m ? 'bg-emerald-500' : 'bg-gray-400')
+            }),
+            m ? 'WALKING' : 'IDLE'
+        )
+    );
+});
 
-    const LoadingScreen = memo(({ progress, visible }: { progress: number; visible: boolean }) => {
-        if (!visible) return null;
-        return (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
-                <div className="relative flex items-center justify-center mb-6">
-                    <div className="w-16 h-16 rounded-full border-4 border-gray-200 anim-spin"
-                         style={{ borderTopColor: '#1f2937' }} />
-                    <span className="absolute text-xs font-bold text-gray-600">
-                        {Math.round(progress)}%
-                    </span>
-                </div>
-                <p className="text-gray-400 text-sm tracking-widest uppercase anim-pulse mb-5">
-                    Loading Models
-                </p>
-                <div className="w-52 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-gray-700 rounded-full"
-                         style={{ width: `${progress}%`, transition: 'width 0.4s ease-out' }} />
-                </div>
-            </div>
-        );
-    });
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  JOYSTICK COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function Joystick(props) {
+    var inputRef = props.inputRef;
+    var baseRef  = useRef(null);
+    var thumbState = useState({ x: 0, y: 0 });
+    var thumbOff = thumbState[0];
+    var setThumbOff = thumbState[1];
+    var pressState = useState(false);
+    var pressed = pressState[0];
+    var setPressed = pressState[1];
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  STATE BADGE
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    var getCenter = useCallback(function () {
+        if (!baseRef.current) return { x: 0, y: 0 };
+        var r = baseRef.current.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }, []);
 
-    const StateBadge = memo(({ moving }: { moving: boolean }) => (
-        <div className="fixed top-4 right-4 z-30 pointer-events-none anim-fade"
-             style={{ animationDelay: '0.5s' }}>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider
-                             border transition-all duration-300 ${
-                moving
-                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-400/25'
-                    : 'bg-gray-500/10 text-gray-500 border-gray-400/20'
-            }`}>
-                <span className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                    moving ? 'bg-emerald-500' : 'bg-gray-400'
-                }`} />
-                {moving ? 'WALKING' : 'IDLE'}
-            </div>
-        </div>
-    ));
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  JOYSTICK
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    const Joystick = ({ inputRef }: { inputRef: React.MutableRefObject<any> }) => {
-        const baseRef = useRef<HTMLDivElement>(null);
-        const [thumbOff, setThumbOff] = useState({ x: 0, y: 0 });
-        const [pressed, setPressed] = useState(false);
-
-        const getCenter = useCallback(() => {
-            if (!baseRef.current) return { x: 0, y: 0 };
-            const r = baseRef.current.getBoundingClientRect();
-            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        }, []);
-
-        const process = useCallback((cx: number, cy: number) => {
-            const c = getCenter();
-            let dx = cx - c.x;
-            let dy = cy - c.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > JOY_RADIUS) {
-                dx = (dx / dist) * JOY_RADIUS;
-                dy = (dy / dist) * JOY_RADIUS;
-            }
-            setThumbOff({ x: dx, y: dy });
-            inputRef.current.x = dx / JOY_RADIUS;
-            inputRef.current.y = dy / JOY_RADIUS;
-        }, [getCenter, inputRef]);
-
-        const reset = useCallback(() => {
-            inputRef.current = { active: false, touchId: null, x: 0, y: 0 };
-            setThumbOff({ x: 0, y: 0 });
-            setPressed(false);
-        }, [inputRef]);
-
-        const onTouchStart = useCallback((e: React.TouchEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const t = e.changedTouches[0];
-            inputRef.current.active = true;
-            inputRef.current.touchId = t.identifier;
-            setPressed(true);
-            process(t.clientX, t.clientY);
-        }, [inputRef, process]);
-
-        const onMouseDown = useCallback((e: React.MouseEvent) => {
-            inputRef.current.active = true;
-            inputRef.current.touchId = -1;
-            setPressed(true);
-            process(e.clientX, e.clientY);
-        }, [inputRef, process]);
-
-        useEffect(() => {
-            const onTM = (e: TouchEvent) => {
-                if (!inputRef.current.active) return;
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    const t = e.changedTouches[i];
-                    if (t.identifier === inputRef.current.touchId) {
-                        e.preventDefault();
-                        process(t.clientX, t.clientY);
-                        return;
-                    }
-                }
-            };
-            const onTE = (e: TouchEvent) => {
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === inputRef.current.touchId) {
-                        reset(); return;
-                    }
-                }
-            };
-            const onMM = (e: MouseEvent) => {
-                if (inputRef.current.active && inputRef.current.touchId === -1)
-                    process(e.clientX, e.clientY);
-            };
-            const onMU = () => {
-                if (inputRef.current.active && inputRef.current.touchId === -1) reset();
-            };
-
-            window.addEventListener('touchmove', onTM, { passive: false });
-            window.addEventListener('touchend', onTE);
-            window.addEventListener('touchcancel', onTE);
-            window.addEventListener('mousemove', onMM);
-            window.addEventListener('mouseup', onMU);
-
-            return () => {
-                window.removeEventListener('touchmove', onTM);
-                window.removeEventListener('touchend', onTE);
-                window.removeEventListener('touchcancel', onTE);
-                window.removeEventListener('mousemove', onMM);
-                window.removeEventListener('mouseup', onMU);
-            };
-        }, [inputRef, process, reset]);
-
-        return (
-            <div className="fixed bottom-8 left-6 z-30 select-none anim-fade"
-                 style={{ animationDelay: '0.3s' }}>
-                <div
-                    ref={baseRef}
-                    onTouchStart={onTouchStart}
-                    onMouseDown={onMouseDown}
-                    className={`relative w-36 h-36 rounded-full border-2 transition-all duration-150 ${
-                        pressed
-                            ? 'bg-black/[0.08] border-black/20 scale-[0.96]'
-                            : 'bg-black/[0.04] border-black/[0.1]'
-                    }`}
-                    style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
-                >
-                    {/* Direction dots */}
-                    <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]" />
-                    </div>
-
-                    {/* Crosshair */}
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="absolute w-px h-8 bg-black/[0.04]" />
-                        <div className="absolute w-8 h-px bg-black/[0.04]" />
-                    </div>
-
-                    {/* Thumb */}
-                    <div
-                        className={`absolute w-14 h-14 rounded-full pointer-events-none
-                                    top-1/2 left-1/2 transition-shadow duration-100 ${
-                            pressed ? 'shadow-lg shadow-black/25' : 'shadow-md shadow-black/15'
-                        }`}
-                        style={{
-                            transform: `translate(calc(-50% + ${thumbOff.x}px), calc(-50% + ${thumbOff.y}px))`,
-                            background: pressed
-                                ? 'radial-gradient(circle, rgba(40,40,40,0.75), rgba(20,20,20,0.85))'
-                                : 'radial-gradient(circle, rgba(80,80,80,0.45), rgba(50,50,50,0.55))',
-                        }}
-                    >
-                        <div className="absolute inset-2 rounded-full bg-white/10" />
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  THREE.JS SCENE SETUP
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    function createScene(canvas: HTMLCanvasElement) {
-        const scene = new Scene();
-        scene.background = new Color(0xffffff);
-        scene.fog = new FogExp2(0xffffff, 0.018);
-
-        const camera = new PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
-        camera.position.set(0, 4.5, 8);
-
-        const renderer = new WebGLRenderer({ canvas, antialias: true });
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = PCFSoftShadowMap;
-        renderer.toneMapping = ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
-
-        // Lights
-        scene.add(new AmbientLight(0xffffff, 0.7));
-        scene.add(new HemisphereLight(0xffffff, 0xf5f5f5, 0.5));
-
-        const dirLight = new DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(8, 15, 10);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.set(1024, 1024);
-        dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 50;
-        dirLight.shadow.camera.left = -15;
-        dirLight.shadow.camera.right = 15;
-        dirLight.shadow.camera.top = 15;
-        dirLight.shadow.camera.bottom = -15;
-        dirLight.shadow.bias = -0.001;
-        scene.add(dirLight);
-        scene.add(dirLight.target);
-
-        // Ground
-        const ground = new Mesh(
-            new PlaneGeometry(500, 500),
-            new MeshStandardMaterial({ color: 0xfafafa, roughness: 0.95, metalness: 0 })
-        );
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
-
-        // Grid
-        const grid = new GridHelper(500, 250, 0xe0e0e0, 0xededed);
-        (grid.material as any).transparent = true;
-        (grid.material as any).opacity = 0.4;
-        scene.add(grid);
-
-        // Shadow blob
-        const blob = new Mesh(
-            new CircleGeometry(0.5, 32),
-            new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false })
-        );
-        blob.rotation.x = -Math.PI / 2;
-        blob.position.y = 0.01;
-        scene.add(blob);
-
-        // Particles
-        const pCount = 150;
-        const pGeo = new BufferGeometry();
-        const pArr = new Float32Array(pCount * 3);
-        for (let i = 0; i < pCount; i++) {
-            pArr[i * 3]     = (Math.random() - 0.5) * 80;
-            pArr[i * 3 + 1] = Math.random() * 12 + 0.5;
-            pArr[i * 3 + 2] = (Math.random() - 0.5) * 80;
+    var process = useCallback(function (cx, cy) {
+        var c = getCenter();
+        var dx = cx - c.x;
+        var dy = cy - c.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > JOY_RADIUS) {
+            dx = (dx / dist) * JOY_RADIUS;
+            dy = (dy / dist) * JOY_RADIUS;
         }
-        pGeo.setAttribute('position', new Float32BufferAttribute(pArr, 3));
-        const particles = new Points(pGeo, new PointsMaterial({
-            color: 0xc0c0c0, size: 0.07, transparent: true, opacity: 0.5, sizeAttenuation: true,
-        }));
-        scene.add(particles);
+        setThumbOff({ x: dx, y: dy });
+        inputRef.current.x = dx / JOY_RADIUS;
+        inputRef.current.y = dy / JOY_RADIUS;
+    }, [getCenter, inputRef]);
 
-        return { scene, camera, renderer, ground, grid, dirLight, blob, particles };
-    }
+    var reset = useCallback(function () {
+        inputRef.current = { active: false, touchId: null, x: 0, y: 0 };
+        setThumbOff({ x: 0, y: 0 });
+        setPressed(false);
+    }, [inputRef]);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  LOAD BOTH MODELS IN PARALLEL
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    function loadModels(
-        scene: THREE.Scene,
-        onProgress: (pct: number) => void
-    ): Promise<{
-        model: THREE.Group;
-        mixer: THREE.AnimationMixer;
-        idleAction: THREE.AnimationAction;
-        walkAction: THREE.AnimationAction;
-    }> {
-        return new Promise((resolve, reject) => {
-            const loader = new GLTFLoader();
-            let count = 0;
-            const data: any[] = [null, null];
-
-            function check() {
-                count++;
-                onProgress((count / 2) * 100);
-                if (count < 2) return;
-
-                const idleGltf = data[0];
-                const walkGltf = data[1];
-
-                if (!idleGltf || !walkGltf) {
-                    reject(new Error('Model load failed: idle=' + !!idleGltf + ' walk=' + !!walkGltf));
+    // Global touch / mouse listeners
+    useEffect(function () {
+        function onTM(e) {
+            if (!inputRef.current.active) return;
+            for (var i = 0; i < e.changedTouches.length; i++) {
+                var t = e.changedTouches[i];
+                if (t.identifier === inputRef.current.touchId) {
+                    e.preventDefault();
+                    process(t.clientX, t.clientY);
                     return;
                 }
-
-                // Use idle as the base model
-                const model = idleGltf.scene;
-
-                // Auto-scale to 1.8 units
-                const box = new Box3().setFromObject(model);
-                const h = box.getSize(new Vector3()).y;
-                model.scale.setScalar(1.8 / h);
-
-                // Shadows
-                model.traverse((c: any) => {
-                    if (c.isMesh) {
-                        c.castShadow = true;
-                        c.receiveShadow = true;
-                    }
-                });
-
-                scene.add(model);
-
-                // Animation mixer on the visible model
-                const mixer = new AnimationMixer(model);
-
-                const idleAction = mixer.clipAction(idleGltf.animations[0]);
-                const walkAction = mixer.clipAction(walkGltf.animations[0]);
-
-                idleAction.setLoop(LoopRepeat, Infinity);
-                walkAction.setLoop(LoopRepeat, Infinity);
-
-                // Start idle playing, walk ready but zero weight
-                idleAction.setEffectiveWeight(1);
-                walkAction.setEffectiveWeight(0);
-                idleAction.play();
-                walkAction.play();
-
-                resolve({ model, mixer, idleAction, walkAction });
             }
+        }
+        function onTE(e) {
+            for (var i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === inputRef.current.touchId) {
+                    reset(); return;
+                }
+            }
+        }
+        function onMM(e) {
+            if (inputRef.current.active && inputRef.current.touchId === -1)
+                process(e.clientX, e.clientY);
+        }
+        function onMU() {
+            if (inputRef.current.active && inputRef.current.touchId === -1)
+                reset();
+        }
 
-            loader.load(IDLE_URL,
-                (g: any) => { data[0] = g; check(); },
-                undefined,
-                (e: any) => { console.error('Idle error:', e); check(); }
-            );
+        window.addEventListener('touchmove', onTM, { passive: false });
+        window.addEventListener('touchend', onTE);
+        window.addEventListener('touchcancel', onTE);
+        window.addEventListener('mousemove', onMM);
+        window.addEventListener('mouseup', onMU);
+        return function () {
+            window.removeEventListener('touchmove', onTM);
+            window.removeEventListener('touchend', onTE);
+            window.removeEventListener('touchcancel', onTE);
+            window.removeEventListener('mousemove', onMM);
+            window.removeEventListener('mouseup', onMU);
+        };
+    }, [inputRef, process, reset]);
 
-            loader.load(WALK_URL,
-                (g: any) => { data[1] = g; check(); },
-                undefined,
-                (e: any) => { console.error('Walk error:', e); check(); }
-            );
-        });
+    return h('div', {
+        className: 'fixed bottom-8 left-6 z-30 select-none anim-fade',
+        style: { animationDelay: '0.3s' }
+    },
+        h('div', {
+            ref: baseRef,
+            onTouchStart: function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var t = e.changedTouches[0];
+                inputRef.current.active = true;
+                inputRef.current.touchId = t.identifier;
+                setPressed(true);
+                process(t.clientX, t.clientY);
+            },
+            onMouseDown: function (e) {
+                inputRef.current.active = true;
+                inputRef.current.touchId = -1;
+                setPressed(true);
+                process(e.clientX, e.clientY);
+            },
+            className: 'relative w-36 h-36 rounded-full border-2 transition-all duration-150 ' +
+                (pressed
+                    ? 'bg-black/[0.08] border-black/20 scale-[0.96]'
+                    : 'bg-black/[0.04] border-black/[0.1]'),
+            style: { backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }
+        },
+            // Cardinal dots
+            h('div', { className: 'absolute inset-0 pointer-events-none' },
+                h('div', { className: 'absolute top-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]' }),
+                h('div', { className: 'absolute bottom-3 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-black/[0.08]' }),
+                h('div', { className: 'absolute left-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]' }),
+                h('div', { className: 'absolute right-3 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-black/[0.08]' })
+            ),
+
+            // Crosshair
+            h('div', { className: 'absolute inset-0 pointer-events-none flex items-center justify-center' },
+                h('div', { className: 'absolute w-px h-8 bg-black/[0.04]' }),
+                h('div', { className: 'absolute w-8 h-px bg-black/[0.04]' })
+            ),
+
+            // Thumb
+            h('div', {
+                className: 'absolute w-14 h-14 rounded-full pointer-events-none top-1/2 left-1/2 transition-shadow duration-100 ' +
+                    (pressed ? 'shadow-lg shadow-black/25' : 'shadow-md shadow-black/15'),
+                style: {
+                    transform: 'translate(calc(-50% + ' + thumbOff.x + 'px), calc(-50% + ' + thumbOff.y + 'px))',
+                    background: pressed
+                        ? 'radial-gradient(circle, rgba(40,40,40,0.75), rgba(20,20,20,0.85))'
+                        : 'radial-gradient(circle, rgba(80,80,80,0.45), rgba(50,50,50,0.55))'
+                }
+            },
+                h('div', { className: 'absolute inset-2 rounded-full bg-white/10' })
+            )
+        )
+    );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  THREE.JS SCENE BUILDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function createScene(canvas) {
+    var scene = new Scene();
+    scene.background = new Color(0xffffff);
+    scene.fog = new FogExp2(0xffffff, 0.018);
+
+    var camera = new PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+    camera.position.set(0, 4.5, 8);
+
+    var renderer = new WebGLRenderer({ canvas: canvas, antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFSoftShadowMap;
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+
+    scene.add(new AmbientLight(0xffffff, 0.7));
+    scene.add(new HemisphereLight(0xffffff, 0xf5f5f5, 0.5));
+
+    var dirLight = new DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(8, 15, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 50;
+    dirLight.shadow.camera.left = -15;
+    dirLight.shadow.camera.right = 15;
+    dirLight.shadow.camera.top = 15;
+    dirLight.shadow.camera.bottom = -15;
+    dirLight.shadow.bias = -0.001;
+    scene.add(dirLight);
+    scene.add(dirLight.target);
+
+    var ground = new Mesh(
+        new PlaneGeometry(500, 500),
+        new MeshStandardMaterial({ color: 0xfafafa, roughness: 0.95, metalness: 0 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    var grid = new GridHelper(500, 250, 0xe0e0e0, 0xededed);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.4;
+    scene.add(grid);
+
+    var blob = new Mesh(
+        new CircleGeometry(0.5, 32),
+        new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false })
+    );
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.01;
+    scene.add(blob);
+
+    var pCount = 150;
+    var pGeo = new BufferGeometry();
+    var pArr = new Float32Array(pCount * 3);
+    for (var i = 0; i < pCount; i++) {
+        pArr[i * 3]     = (Math.random() - 0.5) * 80;
+        pArr[i * 3 + 1] = Math.random() * 12 + 0.5;
+        pArr[i * 3 + 2] = (Math.random() - 0.5) * 80;
     }
+    pGeo.setAttribute('position', new Float32BufferAttribute(pArr, 3));
+    var particles = new Points(pGeo, new PointsMaterial({
+        color: 0xc0c0c0, size: 0.07, transparent: true, opacity: 0.5, sizeAttenuation: true
+    }));
+    scene.add(particles);
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  CROSSFADE HELPER
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    return {
+        scene: scene, camera: camera, renderer: renderer,
+        ground: ground, grid: grid, dirLight: dirLight,
+        blob: blob, particles: particles
+    };
+}
 
-    function crossFade(from: THREE.AnimationAction, to: THREE.AnimationAction, dur: number) {
-        to.reset();
-        to.setEffectiveTimeScale(1);
-        to.setEffectiveWeight(1);
-        to.play();
-        from.crossFadeTo(to, dur, true);
-    }
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  MODEL LOADER (parallel)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadModels(scene, onProgress) {
+    return new Promise(function (resolve, reject) {
+        var loader = new GLTFLoader();
+        var count = 0;
+        var data = [null, null];
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    //  MAIN APP
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function check() {
+            count++;
+            onProgress((count / 2) * 100);
+            if (count < 2) return;
 
-    const App = () => {
-        const canvasRef = useRef<HTMLCanvasElement>(null);
-        const [loading, setLoading] = useState(true);
-        const [progress, setProgress] = useState(0);
-        const [moving, setMoving] = useState(false);
-        const [error, setError] = useState<string | null>(null);
-
-        const joy = useRef({ active: false, touchId: null as number | null, x: 0, y: 0 });
-        const keys = useRef<Record<string, boolean>>({});
-
-        // Keyboard
-        useEffect(() => {
-            const dn = (e: KeyboardEvent) => { keys.current[e.code] = true; };
-            const up = (e: KeyboardEvent) => { keys.current[e.code] = false; };
-            const block = (e: Event) => e.preventDefault();
-
-            window.addEventListener('keydown', dn);
-            window.addEventListener('keyup', up);
-            document.addEventListener('gesturestart', block);
-            document.addEventListener('gesturechange', block);
-            return () => {
-                window.removeEventListener('keydown', dn);
-                window.removeEventListener('keyup', up);
-                document.removeEventListener('gesturestart', block);
-                document.removeEventListener('gesturechange', block);
-            };
-        }, []);
-
-        // Three.js engine
-        useEffect(() => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            const objs = createScene(canvas);
-            const { scene, camera, renderer, ground, grid, dirLight, blob, particles } = objs;
-
-            const pos = new Vector3(0, 0, 0);
-            let rotY = 0;
-            let isM = false;
-            let wasM = false;
-
-            let mixer: THREE.AnimationMixer | null = null;
-            let idleAct: THREE.AnimationAction | null = null;
-            let walkAct: THREE.AnimationAction | null = null;
-            let model: THREE.Group | null = null;
-
-            const clock = new Clock();
-            const camT = new Vector3();
-            const lookT = new Vector3();
-            let frameId = 0;
-
-            // Load
-            loadModels(scene, (p) => setProgress(p))
-                .then((a) => {
-                    model = a.model;
-                    mixer = a.mixer;
-                    idleAct = a.idleAction;
-                    walkAct = a.walkAction;
-                    setTimeout(() => setLoading(false), 400);
-                })
-                .catch((e) => {
-                    console.error(e);
-                    setError(e.message || 'Load failed');
-                });
-
-            // Keyboard reader
-            function kb() {
-                const k = keys.current;
-                let x = 0, y = 0;
-                if (k['KeyA'] || k['ArrowLeft'])  x -= 1;
-                if (k['KeyD'] || k['ArrowRight']) x += 1;
-                if (k['KeyW'] || k['ArrowUp'])    y -= 1;
-                if (k['KeyS'] || k['ArrowDown'])  y += 1;
-                const m = Math.sqrt(x * x + y * y);
-                if (m > 1) { x /= m; y /= m; }
-                return { x, y };
+            if (!data[0] || !data[1]) {
+                reject(new Error('Model load failed — idle:' + !!data[0] + ' walk:' + !!data[1]));
+                return;
             }
 
-            // Snap ground to fake infinite plane
-            function snap() {
-                const s = 2;
-                const sx = Math.round(pos.x / s) * s;
-                const sz = Math.round(pos.z / s) * s;
-                ground.position.x = sx; ground.position.z = sz;
-                grid.position.x = sx; grid.position.z = sz;
-            }
+            var model = data[0].scene;
 
-            // ── MAIN LOOP ──
-            function loop() {
-                frameId = requestAnimationFrame(loop);
-                const dt = Math.min(clock.getDelta(), 0.05);
+            // Scale to ~1.8 units
+            var box = new Box3().setFromObject(model);
+            var size = box.getSize(new Vector3());
+            model.scale.setScalar(1.8 / size.y);
 
-                const k = kb();
-                let ix = joy.current.x + k.x;
-                let iy = joy.current.y + k.y;
-                let mag = Math.sqrt(ix * ix + iy * iy);
-                if (mag > 1) { ix /= mag; iy /= mag; mag = 1; }
-                isM = mag > DEAD_ZONE;
+            model.traverse(function (c) {
+                if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
+            });
 
-                if (model) {
-                    // Move
-                    if (isM) {
-                        pos.x += ix * MOVE_SPEED * dt;
-                        pos.z += iy * MOVE_SPEED * dt;
+            scene.add(model);
 
-                        const tgt = Math.atan2(-ix, -iy);
-                        let diff = tgt - rotY;
-                        if (diff > Math.PI)  diff -= Math.PI * 2;
-                        if (diff < -Math.PI) diff += Math.PI * 2;
-                        rotY += diff * ROT_LERP * dt;
-                    }
+            var mixer = new AnimationMixer(model);
+            var idleAction = mixer.clipAction(data[0].animations[0]);
+            var walkAction = mixer.clipAction(data[1].animations[0]);
 
-                    model.position.copy(pos);
-                    model.rotation.y = rotY;
+            idleAction.setLoop(LoopRepeat, Infinity);
+            walkAction.setLoop(LoopRepeat, Infinity);
+            idleAction.setEffectiveWeight(1);
+            walkAction.setEffectiveWeight(0);
+            idleAction.play();
+            walkAction.play();
 
-                    blob.position.x = pos.x;
-                    blob.position.z = pos.z;
+            resolve({
+                model: model, mixer: mixer,
+                idleAction: idleAction, walkAction: walkAction
+            });
+        }
 
-                    // Crossfade animations
-                    if (isM && !wasM && walkAct && idleAct) {
-                        crossFade(idleAct, walkAct, FADE_DUR);
-                    } else if (!isM && wasM && idleAct && walkAct) {
-                        crossFade(walkAct, idleAct, FADE_DUR);
-                    }
+        loader.load(IDLE_URL,
+            function (g) { data[0] = g; check(); },
+            undefined,
+            function (e) { console.error('Idle fail:', e); check(); }
+        );
+        loader.load(WALK_URL,
+            function (g) { data[1] = g; check(); },
+            undefined,
+            function (e) { console.error('Walk fail:', e); check(); }
+        );
+    });
+}
 
-                    // Walk speed matches input magnitude
-                    if (isM && walkAct) {
-                        const want = 0.7 + mag * 0.5;
-                        const cur = walkAct.getEffectiveTimeScale();
-                        walkAct.setEffectiveTimeScale(MathUtils.lerp(cur, want, 8 * dt));
-                    }
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  CROSSFADE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function crossFade(from, to, dur) {
+    to.reset();
+    to.setEffectiveTimeScale(1);
+    to.setEffectiveWeight(1);
+    to.play();
+    from.crossFadeTo(to, dur, true);
+}
 
-                    wasM = isM;
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  MAIN APP COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function App() {
+    var canvasRef = useRef(null);
 
-                    // Camera
-                    camT.set(pos.x, pos.y + 4.5, pos.z + 7.5);
-                    camera.position.lerp(camT, 1 - Math.exp(-CAM_SMOOTH * dt));
-                    lookT.set(pos.x, pos.y + 1.2, pos.z);
-                    camera.lookAt(lookT);
+    var loadingState = useState(true);
+    var loading = loadingState[0];
+    var setLoading = loadingState[1];
 
-                    // Light
-                    dirLight.position.set(pos.x + 8, 15, pos.z + 10);
-                    dirLight.target.position.copy(pos);
+    var progressState = useState(0);
+    var progress = progressState[0];
+    var setProgress = progressState[1];
 
-                    snap();
+    var movingState = useState(false);
+    var moving = movingState[0];
+    var setMoving = movingState[1];
 
-                    particles.position.x = pos.x;
-                    particles.position.z = pos.z;
+    var joy = useRef({ active: false, touchId: null, x: 0, y: 0 });
+    var keys = useRef({});
+
+    // Keyboard
+    useEffect(function () {
+        function dn(e) { keys.current[e.code] = true; }
+        function up(e) { keys.current[e.code] = false; }
+        function block(e) { e.preventDefault(); }
+
+        window.addEventListener('keydown', dn);
+        window.addEventListener('keyup', up);
+        document.addEventListener('gesturestart', block);
+        document.addEventListener('gesturechange', block);
+        return function () {
+            window.removeEventListener('keydown', dn);
+            window.removeEventListener('keyup', up);
+            document.removeEventListener('gesturestart', block);
+            document.removeEventListener('gesturechange', block);
+        };
+    }, []);
+
+    // Three.js engine
+    useEffect(function () {
+        var canvas = canvasRef.current;
+        if (!canvas) return;
+
+        var objs = createScene(canvas);
+        var scene     = objs.scene;
+        var camera    = objs.camera;
+        var renderer  = objs.renderer;
+        var ground    = objs.ground;
+        var grid      = objs.grid;
+        var dirLight  = objs.dirLight;
+        var blob      = objs.blob;
+        var particles = objs.particles;
+
+        var pos  = new Vector3(0, 0, 0);
+        var rotY = 0;
+        var isM  = false;
+        var wasM = false;
+
+        var mixer    = null;
+        var idleAct  = null;
+        var walkAct  = null;
+        var model    = null;
+
+        var clock  = new Clock();
+        var camT   = new Vector3();
+        var lookT  = new Vector3();
+        var frameId = 0;
+
+        loadModels(scene, function (p) { setProgress(p); })
+            .then(function (a) {
+                model   = a.model;
+                mixer   = a.mixer;
+                idleAct = a.idleAction;
+                walkAct = a.walkAction;
+                setTimeout(function () { setLoading(false); }, 400);
+            })
+            .catch(function (e) { console.error(e); });
+
+        function kbInput() {
+            var k = keys.current;
+            var x = 0, y = 0;
+            if (k['KeyA'] || k['ArrowLeft'])  x -= 1;
+            if (k['KeyD'] || k['ArrowRight']) x += 1;
+            if (k['KeyW'] || k['ArrowUp'])    y -= 1;
+            if (k['KeyS'] || k['ArrowDown'])  y += 1;
+            var m = Math.sqrt(x * x + y * y);
+            if (m > 1) { x /= m; y /= m; }
+            return { x: x, y: y };
+        }
+
+        function snap() {
+            var s = 2;
+            var sx = Math.round(pos.x / s) * s;
+            var sz = Math.round(pos.z / s) * s;
+            ground.position.x = sx; ground.position.z = sz;
+            grid.position.x = sx; grid.position.z = sz;
+        }
+
+        // ── GAME LOOP ──
+        function loop() {
+            frameId = requestAnimationFrame(loop);
+            var dt = Math.min(clock.getDelta(), 0.05);
+
+            var k = kbInput();
+            var ix = joy.current.x + k.x;
+            var iy = joy.current.y + k.y;
+            var mag = Math.sqrt(ix * ix + iy * iy);
+            if (mag > 1) { ix /= mag; iy /= mag; mag = 1; }
+            isM = mag > DEAD_ZONE;
+
+            if (model) {
+                if (isM) {
+                    pos.x += ix * MOVE_SPEED * dt;
+                    pos.z += iy * MOVE_SPEED * dt;
+
+                    var tgt = Math.atan2(-ix, -iy);
+                    var diff = tgt - rotY;
+                    if (diff > Math.PI)  diff -= Math.PI * 2;
+                    if (diff < -Math.PI) diff += Math.PI * 2;
+                    rotY += diff * ROT_LERP * dt;
                 }
 
-                particles.rotation.y += dt * 0.015;
-                if (mixer) mixer.update(dt);
+                model.position.copy(pos);
+                model.rotation.y = rotY;
+                blob.position.x = pos.x;
+                blob.position.z = pos.z;
 
-                setMoving(isM);
-                renderer.render(scene, camera);
+                // Crossfade
+                if (isM && !wasM && walkAct && idleAct) {
+                    crossFade(idleAct, walkAct, FADE_DUR);
+                } else if (!isM && wasM && idleAct && walkAct) {
+                    crossFade(walkAct, idleAct, FADE_DUR);
+                }
+
+                if (isM && walkAct) {
+                    var want = 0.7 + mag * 0.5;
+                    var cur = walkAct.getEffectiveTimeScale();
+                    walkAct.setEffectiveTimeScale(MathUtils.lerp(cur, want, 8 * dt));
+                }
+
+                wasM = isM;
+
+                // Camera
+                camT.set(pos.x, pos.y + 4.5, pos.z + 7.5);
+                camera.position.lerp(camT, 1 - Math.exp(-CAM_SMOOTH * dt));
+                lookT.set(pos.x, pos.y + 1.2, pos.z);
+                camera.lookAt(lookT);
+
+                // Light
+                dirLight.position.set(pos.x + 8, 15, pos.z + 10);
+                dirLight.target.position.copy(pos);
+
+                snap();
+                particles.position.x = pos.x;
+                particles.position.z = pos.z;
             }
-            loop();
 
-            const onResize = () => {
-                camera.aspect = innerWidth / innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(innerWidth, innerHeight);
-            };
-            window.addEventListener('resize', onResize);
+            particles.rotation.y += dt * 0.015;
+            if (mixer) mixer.update(dt);
+            setMoving(isM);
+            renderer.render(scene, camera);
+        }
+        loop();
 
-            return () => {
-                cancelAnimationFrame(frameId);
-                window.removeEventListener('resize', onResize);
-                renderer.dispose();
-            };
-        }, []);
+        function onResize() {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        }
+        window.addEventListener('resize', onResize);
 
-        return (
-            <div className="relative w-full h-full bg-white">
-                <canvas ref={canvasRef} className="block w-full h-full" />
+        return function () {
+            cancelAnimationFrame(frameId);
+            window.removeEventListener('resize', onResize);
+            renderer.dispose();
+        };
+    }, []);
 
-                <LoadingScreen progress={progress} visible={loading} />
+    // ── RENDER ──
+    return h('div', { className: 'relative w-full h-full bg-white' },
 
-                {/* Error display */}
-                {error && (
-                    <div className="fixed bottom-0 left-0 right-0 z-50 bg-red-500 text-white
-                                    p-4 text-sm font-mono text-center">
-                        ❌ {error}
-                    </div>
-                )}
+        h('canvas', { ref: canvasRef, className: 'block w-full h-full' }),
 
-                {!loading && !error && (
-                    <>
-                        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30
-                                        pointer-events-none anim-fade">
-                            <p className="text-gray-300 text-[11px] tracking-[0.2em] uppercase text-center">
-                                Use joystick to walk · WASD on desktop
-                            </p>
-                        </div>
+        h(LoadingScreen, { progress: progress, visible: loading }),
 
-                        <StateBadge moving={moving} />
-                        <Joystick inputRef={joy} />
-                    </>
-                )}
-            </div>
-        );
-    };
+        !loading ? h(React.Fragment, null,
 
-    // ━━━━ MOUNT ━━━━
-    const root = ReactDOM.createRoot(document.getElementById('root')!);
-    root.render(<App />);
+            // Top hint
+            h('div', {
+                className: 'fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none anim-fade'
+            },
+                h('p', {
+                    className: 'text-gray-300 text-[11px] tracking-[0.2em] uppercase text-center'
+                }, 'Use joystick to walk \u00B7 WASD on desktop')
+            ),
 
-    </script>
+            h(StateBadge, { moving: moving }),
+            h(Joystick, { inputRef: joy })
+
+        ) : null
+    );
+}
+
+// ━━━━ MOUNT ━━━━
+var root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App, null));
+
+</script>
 </body>
 </html>
